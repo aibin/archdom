@@ -29,7 +29,7 @@ Archdom lets you describe your software architecture in plain YAML files and ren
 ## Quick start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/archdom.git
+git clone https://github.com/aibin/archdom.git
 cd archdom/ui
 npm install
 npm run dev
