@@ -1,0 +1,92 @@
+name: Journal Entry Processor
+diagramType: component
+scope: Journal Entry Processor — Accounting Service
+
+nodes:
+  - id: entry-validator
+    name: Entry Validator
+    description: Enforces double-entry rules — debits must equal credits; rejects invalid entries
+    technology: Python
+    type: component
+
+  - id: account-resolver
+    name: Account Resolver
+    description: Resolves account codes to internal IDs; validates accounts exist and are open
+    technology: Python
+    type: component
+
+  - id: fx-converter
+    name: FX Converter
+    description: Converts foreign-currency amounts to base currency using locked daily rate
+    technology: Python
+    type: component
+
+  - id: idempotency-guard
+    name: Idempotency Guard
+    description: Prevents duplicate journal entries using idempotency keys
+    technology: Python + Redis
+    type: component
+
+  - id: entry-writer
+    name: Entry Writer
+    description: Atomically inserts debit and credit lines in a single DB transaction
+    technology: Python / SQLAlchemy
+    type: component
+
+  - id: event-emitter
+    name: Event Emitter
+    description: Publishes journal.posted event after successful commit
+    technology: Python / aiokafka
+    type: component
+
+  - id: ledger-db
+    name: Ledger DB
+    description: Append-only partitioned journal table
+    technology: PostgreSQL
+    type: db
+
+  - id: idempotency-store
+    name: Idempotency Store
+    description: Tracks processed idempotency keys with TTL
+    technology: Redis
+    type: db
+
+  - id: event-bus
+    name: Event Bus
+    description: Distributes journal.posted events to downstream consumers
+    technology: Apache Kafka
+    type: component
+
+edges:
+  - from: entry-validator
+    to: account-resolver
+    label: Resolve accounts
+    style: sync
+  - from: entry-validator
+    to: idempotency-guard
+    label: Check for duplicate
+    style: sync
+  - from: entry-validator
+    to: fx-converter
+    label: Convert FX amounts
+    style: sync
+  - from: idempotency-guard
+    to: idempotency-store
+    label: Get / set key
+    style: sync
+  - from: entry-validator
+    to: entry-writer
+    label: Commit validated entry
+    style: sync
+  - from: entry-writer
+    to: ledger-db
+    label: INSERT debit + credit lines
+    style: sync
+  - from: entry-writer
+    to: event-emitter
+    label: Notify on commit
+    style: async
+  - from: event-emitter
+    to: event-bus
+    label: Publish journal.posted
+    style: event

@@ -1,0 +1,151 @@
+name: Accounting Service
+diagramType: component
+scope: Accounting Service
+
+groups:
+  - id: core-accounting-boundary
+    name: Core Accounting
+    description: Period management, reconciliation and balance tracking
+    nodeIds:
+      - period-close
+      - coa-manager
+      - reconciliation-engine
+      - balance-calculator
+
+nodes:
+  - id: ledger-api
+    name: Ledger API
+    description: REST + gRPC interface for posting and querying journal entries
+    technology: FastAPI + grpcio
+    type: server-app
+
+  - id: journal-processor
+    name: Journal Entry Processor
+    description: Validates and commits double-entry journal entries; enforces debit = credit invariant
+    technology: Python
+    type: component
+    file: platform/accounting/reconciliation.yaml
+
+  - id: coa-manager
+    name: Chart of Accounts Manager
+    description: Manages account hierarchy, types, and closing rules
+    technology: Python
+    type: component
+
+  - id: reconciliation-engine
+    name: Reconciliation Engine
+    description: Matches imported bank transactions to journal entries
+    technology: Python
+    type: component
+
+  - id: bank-rule-engine
+    name: Bank Rule Engine
+    description: User-defined and ML-suggested auto-categorisation rules
+    technology: Python
+    type: component
+
+  - id: ml-categoriser
+    name: ML Categoriser
+    description: BERT-based model predicts account category from transaction description
+    technology: Python / HuggingFace
+    type: component
+
+  - id: currency-service
+    name: Currency Service
+    description: Fetches live FX rates and converts multi-currency transactions
+    technology: Python
+    type: component
+
+  - id: period-close
+    name: Period Close Manager
+    description: Handles month-end and year-end close — locks periods, rolls retained earnings
+    technology: Python
+    type: component
+
+  - id: balance-calculator
+    name: Balance Calculator
+    description: Computes running account balances with Redis-backed cache
+    technology: Python
+    type: component
+
+  - id: ledger-db
+    name: Ledger DB
+    description: Append-only partitioned journal table — never updated, only inserted
+    technology: PostgreSQL (partitioned)
+    type: db
+
+  - id: cache
+    name: Balance Cache
+    description: Account balances cached for sub-millisecond dashboard reads
+    technology: Redis
+    type: db
+
+  - id: fx-provider
+    name: FX Rate Provider
+    description: Live exchange rates
+    technology: Open Exchange Rates API
+    type: software-system
+    external: true
+
+edges:
+  - from: ledger-api
+    to: journal-processor
+    label: Post journal entries
+    style: sync
+  - from: ledger-api
+    to: balance-calculator
+    label: Query balances
+    style: sync
+  - from: ledger-api
+    to: coa-manager
+    label: Manage accounts
+    style: sync
+  - from: ledger-api
+    to: period-close
+    label: Open / close periods
+    style: sync
+  - from: journal-processor
+    to: ledger-db
+    label: INSERT journal lines
+    style: sync
+  - from: journal-processor
+    to: balance-calculator
+    label: Invalidate balances
+    style: async
+  - from: journal-processor
+    to: currency-service
+    label: Convert currencies
+    style: sync
+  - from: reconciliation-engine
+    to: ledger-db
+    label: Read unreconciled entries
+    style: sync
+  - from: reconciliation-engine
+    to: bank-rule-engine
+    label: Apply rules
+    style: sync
+  - from: bank-rule-engine
+    to: ml-categoriser
+    label: Fallback to ML
+    style: sync
+  - from: balance-calculator
+    to: ledger-db
+    label: Aggregate journal lines
+    style: sync
+  - from: balance-calculator
+    to: cache
+    label: Cache balances
+    style: sync
+  - from: currency-service
+    to: fx-provider
+    label: Fetch live rates
+    technology: REST
+    style: sync
+  - from: coa-manager
+    to: ledger-db
+    label: Account metadata
+    style: sync
+  - from: period-close
+    to: ledger-db
+    label: Lock period / post closing entries
+    style: sync

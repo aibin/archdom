@@ -1,0 +1,148 @@
+name: Banking Integration
+diagramType: component
+scope: Banking Integration Service
+
+nodes:
+  - id: banking-api
+    name: Banking API
+    description: REST interface for connecting accounts, triggering syncs, viewing transactions
+    technology: Python / FastAPI
+    type: server-app
+
+  - id: connection-manager
+    name: Connection Manager
+    description: Manages OAuth2 flows with banks via Plaid Link; stores and refreshes access tokens
+    technology: Python
+    type: component
+
+  - id: transaction-importer
+    name: Transaction Importer
+    description: Pulls transaction history from Plaid, handles pagination and date ranges
+    technology: Python
+    type: component
+
+  - id: deduplication-engine
+    name: Deduplication Engine
+    description: Fingerprints incoming transactions to prevent duplicate imports across syncs
+    technology: Python
+    type: component
+
+  - id: enrichment-service
+    name: Transaction Enrichment
+    description: Normalises merchant names, adds categories, flags recurring transactions
+    technology: Python / spaCy
+    type: component
+
+  - id: rule-engine
+    name: Categorisation Rule Engine
+    description: Applies user-defined rules (payee match, amount range) to auto-categorise
+    technology: Python
+    type: component
+
+  - id: reconciliation-matcher
+    name: Reconciliation Matcher
+    description: Matches bank transactions to open invoices, bills, and expense claims
+    technology: Python
+    type: component
+
+  - id: webhook-handler
+    name: Webhook Handler
+    description: Receives real-time Plaid transaction webhooks for instant sync
+    technology: Python / FastAPI
+    type: server-app
+
+  - id: sync-scheduler
+    name: Sync Scheduler
+    description: Triggers nightly full syncs and handles retry backoff on failures
+    technology: Python / Celery
+    type: component
+
+  - id: ops-db
+    name: Operational DB
+    description: Bank connections, raw transactions, sync state, rules
+    technology: PostgreSQL
+    type: db
+
+  - id: accounting-svc
+    name: Accounting Service
+    description: Receives classified bank transactions as journal entries
+    technology: gRPC
+    type: software-system
+    external: true
+
+  - id: plaid
+    name: Plaid
+    description: Open Banking aggregator — account linkage and transaction data
+    technology: Plaid API
+    type: software-system
+    external: true
+    link: https://plaid.com/docs/api
+
+edges:
+  - from: banking-api
+    to: connection-manager
+    label: Link / unlink bank
+    style: sync
+  - from: banking-api
+    to: transaction-importer
+    label: Trigger manual sync
+    style: sync
+  - from: banking-api
+    to: reconciliation-matcher
+    label: Match transactions
+    style: sync
+  - from: connection-manager
+    to: plaid
+    label: OAuth2 token exchange
+    technology: REST / HTTPS
+    style: sync
+  - from: connection-manager
+    to: ops-db
+    label: Store access tokens
+    style: sync
+  - from: transaction-importer
+    to: plaid
+    label: Fetch transactions
+    technology: REST
+    style: sync
+  - from: transaction-importer
+    to: deduplication-engine
+    label: Check for duplicates
+    style: sync
+  - from: deduplication-engine
+    to: ops-db
+    label: Transaction fingerprints
+    style: sync
+  - from: transaction-importer
+    to: enrichment-service
+    label: Enrich raw data
+    style: sync
+  - from: enrichment-service
+    to: rule-engine
+    label: Apply categorisation rules
+    style: sync
+  - from: rule-engine
+    to: ops-db
+    label: Read user rules
+    style: sync
+  - from: rule-engine
+    to: ops-db
+    label: Store categorised transactions
+    style: sync
+  - from: rule-engine
+    to: accounting-svc
+    label: Post as journal entries
+    technology: gRPC
+    style: sync
+  - from: reconciliation-matcher
+    to: ops-db
+    label: Read transactions & invoices
+    style: sync
+  - from: webhook-handler
+    to: transaction-importer
+    label: Trigger incremental sync
+    style: async
+  - from: sync-scheduler
+    to: transaction-importer
+    label: Nightly full sync
+    style: async

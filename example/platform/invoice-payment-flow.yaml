@@ -1,0 +1,123 @@
+name: Invoice Payment Flow
+diagramType: dynamic
+scope: Customer Pays an Invoice
+
+nodes:
+  - id: customer
+    name: Customer
+    description: Receives invoice and clicks payment link
+    type: user
+    external: true
+
+  - id: web
+    name: Web Application
+    description: Renders payment portal page
+    technology: React
+    type: spa
+
+  - id: gateway
+    name: API Gateway
+    description: Routes and validates requests
+    technology: Kong
+    type: infrastructure-node
+
+  - id: invoicing
+    name: Invoicing Service
+    description: Validates payment link token; returns invoice details
+    technology: Node.js
+    type: container
+
+  - id: payments
+    name: Payment Service
+    description: Orchestrates payment collection and reconciliation
+    technology: Node.js
+    type: container
+
+  - id: stripe
+    name: Stripe
+    description: Processes card or ACH payment
+    technology: Stripe API
+    type: software-system
+    external: true
+    link: https://stripe.com/docs/api
+
+  - id: accounting
+    name: Accounting Service
+    description: Records payment as a journal entry
+    technology: Python / FastAPI
+    type: container
+
+  - id: notifications
+    name: Notification Service
+    description: Sends receipt to customer and alert to business owner
+    technology: Python
+    type: container
+
+  - id: bus
+    name: Event Bus
+    description: Propagates payment.received event
+    technology: Apache Kafka
+    type: container
+
+edges:
+  - from: customer
+    to: web
+    label: Click payment link
+    style: sync
+    step: 1
+  - from: web
+    to: gateway
+    label: GET /invoices/{token}
+    technology: HTTPS
+    style: sync
+    step: 2
+  - from: gateway
+    to: invoicing
+    label: Validate token & fetch invoice
+    style: sync
+    step: 3
+  - from: web
+    to: gateway
+    label: POST /payments — card details
+    technology: HTTPS
+    style: sync
+    step: 4
+  - from: gateway
+    to: payments
+    label: Initiate payment
+    style: sync
+    step: 5
+  - from: payments
+    to: stripe
+    label: Charge customer card
+    technology: Stripe API
+    style: sync
+    step: 6
+  - from: payments
+    to: invoicing
+    label: Mark invoice as paid
+    technology: gRPC
+    style: sync
+    step: 7
+  - from: payments
+    to: accounting
+    label: Post payment journal entry
+    technology: gRPC
+    style: sync
+    step: 8
+  - from: payments
+    to: bus
+    label: Emit payment.received
+    style: event
+    step: 9
+  - from: bus
+    to: notifications
+    label: Fan-out event
+    style: event
+    step: 10
+  - from: notifications
+    to: customer
+    label: Email receipt
+    technology: SendGrid
+    style: async
+    step: 11

@@ -1,0 +1,136 @@
+name: Payroll Run Flow
+diagramType: dynamic
+scope: Run Payroll Use Case
+
+nodes:
+  - id: owner
+    name: Business Owner
+    description: Initiates and approves payroll run
+    type: user
+
+  - id: web
+    name: Web Application
+    description: Payroll review and approval UI
+    technology: React
+    type: spa
+
+  - id: gateway
+    name: API Gateway
+    technology: Kong
+    type: infrastructure-node
+
+  - id: payroll
+    name: Payroll Service
+    description: Orchestrates the full payroll run
+    technology: Python / FastAPI
+    type: container
+
+  - id: tax-engine
+    name: Tax Withholding Engine
+    description: Calculates federal, state, and local withholdings per employee
+    technology: Python
+    type: container
+
+  - id: benefits
+    name: Benefits Manager
+    description: Applies 401(k), health insurance, and garnishment deductions
+    technology: Python
+    type: container
+
+  - id: compliance
+    name: Compliance Checker
+    description: Validates pay against FLSA, overtime, and minimum wage rules
+    technology: Python
+    type: container
+
+  - id: accounting
+    name: Accounting Service
+    description: Receives payroll journal entries
+    technology: Python / FastAPI
+    type: container
+
+  - id: direct-deposit
+    name: Direct Deposit Service
+    description: Submits ACH file to payroll network
+    technology: Python
+    type: container
+
+  - id: payroll-network
+    name: Payroll Network
+    description: Executes ACH direct deposits and tax remittances
+    technology: Gusto Partner API
+    type: software-system
+    external: true
+    link: https://docs.gusto.com
+
+  - id: documents
+    name: Document Service
+    description: Generates payslip PDFs
+    technology: Python / WeasyPrint
+    type: container
+
+  - id: notifications
+    name: Notification Service
+    description: Emails payslips to employees
+    technology: Python
+    type: container
+
+edges:
+  - from: owner
+    to: web
+    label: Review & approve payroll
+    style: sync
+    step: 1
+  - from: web
+    to: gateway
+    label: POST /payroll/runs
+    technology: HTTPS
+    style: sync
+    step: 2
+  - from: gateway
+    to: payroll
+    label: Initiate run
+    style: sync
+    step: 3
+  - from: payroll
+    to: tax-engine
+    label: Calculate withholdings
+    style: sync
+    step: 4
+  - from: payroll
+    to: benefits
+    label: Apply deductions
+    style: sync
+    step: 5
+  - from: payroll
+    to: compliance
+    label: Validate compliance
+    style: sync
+    step: 6
+  - from: payroll
+    to: accounting
+    label: Post payroll journal entries
+    technology: gRPC
+    style: sync
+    step: 7
+  - from: payroll
+    to: direct-deposit
+    label: Submit ACH file
+    style: async
+    step: 8
+  - from: direct-deposit
+    to: payroll-network
+    label: NACHA file transfer
+    technology: SFTP
+    style: async
+    step: 9
+  - from: payroll
+    to: documents
+    label: Generate payslips
+    style: async
+    step: 10
+  - from: documents
+    to: notifications
+    label: Email payslips to employees
+    style: async
+    step: 11

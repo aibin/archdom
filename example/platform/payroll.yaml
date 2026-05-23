@@ -1,0 +1,159 @@
+name: Payroll Service
+diagramType: component
+scope: Payroll Service
+
+groups:
+  - id: core-payroll-boundary
+    name: Core Payroll
+    description: Employee management, payroll processing, and compliance
+    nodeIds:
+      - employee-registry
+      - pay-schedule-manager
+      - payroll-calculator
+      - direct-deposit-service
+
+nodes:
+  - id: payroll-api
+    name: Payroll API
+    description: REST + gRPCx interface for managing employees, running payroll, querying payslips
+    technology: Python / FastAPI
+    type: server-app
+
+  - id: employee-registry
+    name: Employee Registry
+    description: Manages employee profiles, tax codes, bank accounts, and employment history
+    technology: Python
+    type: component
+
+  - id: pay-schedule-manager
+    name: Pay Schedule Manager
+    description: Defines pay periods — weekly, bi-weekly, semi-monthly, monthly
+    technology: Python
+    type: component
+
+  - id: payroll-calculator
+    name: Payroll Calculator
+    description: Computes gross pay from hours, salary, and bonuses; applies deductions
+    technology: Python
+    type: component
+
+  - id: tax-withholding-engine
+    name: Tax Withholding Engine
+    description: Calculates federal, state, and local income tax withholding per employee
+    technology: Python
+    type: component
+
+  - id: benefits-manager
+    name: Benefits & Deductions Manager
+    description: Handles 401(k), health insurance, FSA, and garnishments
+    technology: Python
+    type: component
+
+  - id: compliance-checker
+    name: Compliance Checker
+    description: Validates payroll against FLSA, minimum wage, and overtime rules
+    technology: Python
+    type: component
+
+  - id: direct-deposit-service
+    name: Direct Deposit Service
+    description: Generates NACHA ACH files and submits to the payroll network
+    technology: Python
+    type: component
+
+  - id: payroll-journal-poster
+    name: Payroll Journal Poster
+    description: Posts payroll expense, liability, and tax entries to the accounting ledger
+    technology: Python
+    type: component
+
+  - id: payslip-generator
+    name: Payslip Generator
+    description: Generates detailed payslip PDFs per employee per pay run
+    technology: Python
+    type: component
+
+  - id: ops-db
+    name: Operational DB
+    description: Employees, pay runs, payslips, benefits elections, tax codes
+    technology: PostgreSQL
+    type: db
+
+  - id: accounting-svc
+    name: Accounting Service
+    description: Double-entry ledger for payroll journal entries
+    technology: gRPC
+    type: software-system
+    external: true
+
+  - id: payroll-network
+    name: Payroll Network
+    description: ACH direct deposit and employer payroll tax remittance
+    technology: Gusto Partner API
+    type: software-system
+    external: true
+    link: https://docs.gusto.com
+
+edges:
+  - from: payroll-api
+    to: employee-registry
+    label: Manage employees
+    style: sync
+  - from: payroll-api
+    to: pay-schedule-manager
+    label: Configure pay periods
+    style: sync
+  - from: payroll-api
+    to: payroll-calculator
+    label: Initiate payroll run
+    style: sync
+  - from: payroll-calculator
+    to: tax-withholding-engine
+    label: Calculate withholding
+    style: sync
+  - from: payroll-calculator
+    to: benefits-manager
+    label: Apply deductions
+    style: sync
+  - from: payroll-calculator
+    to: compliance-checker
+    label: Validate compliance
+    style: sync
+  - from: payroll-calculator
+    to: ops-db
+    label: Store pay run results
+    style: sync
+  - from: payroll-calculator
+    to: direct-deposit-service
+    label: Initiate deposits
+    style: async
+  - from: payroll-calculator
+    to: payroll-journal-poster
+    label: Post payroll entries
+    style: async
+  - from: payroll-calculator
+    to: payslip-generator
+    label: Generate payslips
+    style: async
+  - from: direct-deposit-service
+    to: payroll-network
+    label: Submit NACHA ACH file
+    technology: SFTP / API
+    style: async
+  - from: payroll-journal-poster
+    to: accounting-svc
+    label: Post journal entries
+    technology: gRPC
+    style: sync
+  - from: employee-registry
+    to: ops-db
+    label: Employee records
+    style: sync
+  - from: tax-withholding-engine
+    to: ops-db
+    label: Withholding records
+    style: sync
+  - from: payslip-generator
+    to: ops-db
+    label: Store payslip metadata
+    style: sync

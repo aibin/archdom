@@ -1,0 +1,129 @@
+name: Invoicing Service
+diagramType: component
+scope: Invoicing Service
+
+nodes:
+  - id: invoice-api
+    name: Invoice API
+    description: REST interface for creating, updating, and querying invoices
+    technology: Node.js / Express
+    type: server-app
+
+  - id: invoice-builder
+    name: Invoice Builder
+    description: Composes invoice from line items, taxes, discounts, and payment terms
+    technology: Node.js
+    type: component
+
+  - id: recurring-scheduler
+    name: Recurring Invoice Scheduler
+    description: Generates recurring invoices on user-defined schedules (weekly, monthly, custom)
+    technology: Node.js
+    type: component
+
+  - id: delivery-service
+    name: Invoice Delivery Service
+    description: Sends invoices via email, customer portal link, or API webhook
+    technology: Node.js
+    type: component
+
+  - id: payment-link-gen
+    name: Payment Link Generator
+    description: Creates signed, time-limited payment URLs for each invoice
+    technology: Node.js
+    type: component
+
+  - id: payment-tracker
+    name: Payment Tracker
+    description: Monitors payment status and marks invoices paid, partial, or overdue
+    technology: Node.js
+    type: component
+
+  - id: reminder-engine
+    name: Reminder Engine
+    description: Sends configurable overdue reminders at D+7, D+14, D+30
+    technology: Node.js
+    type: component
+
+  - id: credit-note-manager
+    name: Credit Note Manager
+    description: Issues credit notes and applies them against open invoices
+    technology: Node.js
+    type: component
+
+  - id: tax-calculator
+    name: Tax Calculator
+    description: Applies VAT/GST/sales tax rules based on customer location and item type
+    technology: Node.js
+    type: component
+
+  - id: ops-db
+    name: Operational DB
+    description: Invoice records, line items, contacts, payment status
+    technology: PostgreSQL
+    type: db
+
+  - id: payment-svc
+    name: Payment Service
+    description: Processes customer payments via Stripe
+    technology: Node.js
+    type: software-system
+    external: true
+
+edges:
+  - from: invoice-api
+    to: invoice-builder
+    label: Create invoice
+    style: sync
+  - from: invoice-api
+    to: payment-tracker
+    label: Query payment status
+    style: sync
+  - from: invoice-api
+    to: credit-note-manager
+    label: Issue credit note
+    style: sync
+  - from: invoice-api
+    to: recurring-scheduler
+    label: Schedule recurring
+    style: sync
+  - from: invoice-builder
+    to: tax-calculator
+    label: Calculate taxes
+    style: sync
+  - from: invoice-builder
+    to: ops-db
+    label: Persist invoice
+    style: sync
+  - from: invoice-builder
+    to: delivery-service
+    label: Trigger delivery
+    style: async
+  - from: delivery-service
+    to: payment-link-gen
+    label: Generate payment URL
+    style: sync
+  - from: payment-link-gen
+    to: ops-db
+    label: Store signed token
+    style: sync
+  - from: payment-tracker
+    to: ops-db
+    label: Update payment status
+    style: sync
+  - from: payment-tracker
+    to: payment-svc
+    label: Poll payment status
+    style: sync
+  - from: reminder-engine
+    to: ops-db
+    label: Query overdue invoices
+    style: sync
+  - from: credit-note-manager
+    to: ops-db
+    label: Record credit note
+    style: sync
+  - from: recurring-scheduler
+    to: invoice-builder
+    label: Generate invoice from template
+    style: async

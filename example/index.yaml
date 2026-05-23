@@ -1,0 +1,121 @@
+name: FinLedger
+diagramType: context
+scope: Small Business Finance Platform
+
+theme:
+  software-system: '#4B8BBE'
+
+nodes:
+  - id: owner
+    name: Business Owner
+    description: Manages books, sends invoices, runs payroll
+    type: user
+
+  - id: accountant
+    name: Accountant / Bookkeeper
+    description: Reconciles accounts and prepares tax filings
+    type: user
+
+  - id: employee
+    name: Employee
+    description: Views payslips and submits expense claims
+    type: user
+    external: true
+
+  - id: finledger
+    name: FinLedger Platform
+    description: Cloud accounting, invoicing, payroll, banking and tax
+    type: software-system
+    file: platform.yaml
+
+  - id: bank
+    name: Bank / Financial Institution
+    description: Provides real-time transaction feeds via Open Banking
+    technology: Plaid / Open Banking API
+    type: software-system
+    external: true
+    link: https://plaid.com/docs
+
+  - id: stripe
+    name: Payment Processor
+    description: Accepts card and ACH payments on behalf of merchants
+    technology: Stripe
+    type: software-system
+    external: true
+    link: https://stripe.com/docs
+
+  - id: payroll-net
+    name: Payroll Network
+    description: ACH direct deposit and employer payroll tax remittance
+    technology: Gusto Partner API
+    type: software-system
+    external: true
+    link: https://docs.gusto.com
+
+  - id: irs
+    name: Tax Authority
+    description: Federal and state tax submission via e-File APIs
+    technology: IRS MeF API
+    type: software-system
+    external: true
+    link: https://www.irs.gov/e-file-providers/modernized-e-file-mef-internet-filing
+
+  - id: sendgrid
+    name: Email Provider
+    description: Transactional emails — invoices, payslips, alerts
+    technology: SendGrid
+    type: software-system
+    external: true
+    link: https://docs.sendgrid.com
+
+  - id: twilio
+    name: SMS Provider
+    description: Payment reminders and 2FA codes
+    technology: Twilio
+    type: software-system
+    external: true
+    link: https://www.twilio.com/docs
+
+edges:
+  - from: owner
+    to: finledger
+    label: Manages finances
+    style: sync
+  - from: accountant
+    to: finledger
+    label: Reconciles & files taxes
+    style: sync
+  - from: employee
+    to: finledger
+    label: Views payslips
+    style: sync
+  - from: finledger
+    to: bank
+    label: Fetch transaction feeds
+    technology: REST / OAuth2
+    style: sync
+  - from: finledger
+    to: stripe
+    label: Process invoice payments
+    technology: HTTPS
+    style: sync
+  - from: finledger
+    to: payroll-net
+    label: Submit payroll & ACH
+    technology: HTTPS
+    style: async
+  - from: finledger
+    to: irs
+    label: File tax returns
+    technology: IRS MeF API
+    style: async
+  - from: finledger
+    to: sendgrid
+    label: Invoices, receipts, alerts
+    technology: SMTP / API
+    style: async
+  - from: finledger
+    to: twilio
+    label: 2FA & payment reminders
+    technology: REST
+    style: async
