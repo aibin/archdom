@@ -9,16 +9,16 @@ import ReactFlow, {
   ReactFlowProvider,
   Node,
   Edge,
-  MarkerType,
   NodeMouseHandler,
 } from 'reactflow'
 import { toPng } from 'html-to-image'
 import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
-import { C4NodeData, YamlLayer, YamlEdge, EdgeStyle, DiagramType, YamlGroup } from './types'
+import { C4NodeData, YamlLayer, YamlEdge, DiagramType, YamlGroup } from './types'
 import { loadYaml, yamlCache } from './yamlLoader'
 import { Legend } from './Legend'
+import { edgeAppearance, edgeLabel } from './diagramUtils'
 
 // ── Diagram type badge ────────────────────────────────────────────────────────
 
@@ -60,38 +60,6 @@ function DiagramBadge({ layer }: { layer: YamlLayer | null }) {
       )}
     </div>
   )
-}
-
-// ── Edge styles ───────────────────────────────────────────────────────────────
-
-const LABEL_STYLE = {
-  labelStyle: { fill: '#94a3b8', fontSize: 11 },
-  labelBgStyle: { fill: '#1e2235', fillOpacity: 0.85 },
-}
-
-function edgeAppearance(style?: EdgeStyle): Partial<Edge> {
-  switch (style) {
-    case 'async':
-      return { ...LABEL_STYLE, style: { stroke: '#64748b', strokeWidth: 1.5, strokeDasharray: '8 4' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#64748b' } }
-    case 'event':
-      return { ...LABEL_STYLE, animated: true, style: { stroke: '#7c6af7', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#7c6af7' } }
-    case 'depends':
-      return { ...LABEL_STYLE, style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '3 5' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }
-    default:
-      return { ...LABEL_STYLE, style: { stroke: '#475569', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }
-  }
-}
-
-// Circled numbers for dynamic diagram step labels
-function stepPrefix(n: number): string {
-  const circles = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩']
-  return (n >= 1 && n <= 10 ? circles[n - 1] : `(${n})`) + ' '
-}
-
-function edgeLabel(e: YamlEdge): string | undefined {
-  const base = e.label || e.technology || undefined
-  if (e.step != null) return `${stepPrefix(e.step)}${base ?? ''}`
-  return base
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────

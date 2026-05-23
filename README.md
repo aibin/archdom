@@ -18,7 +18,7 @@ Archdom lets you describe your software architecture in plain YAML files and ren
 - **External system flag** — grey styling for third-party dependencies
 - **Dynamic diagrams** — numbered interaction steps (①②③…) for use-case walkthroughs
 - **Deployment diagrams** — infrastructure nodes, deployment environments
-- **Shareable URLs** — every diagram layer has its own route (`/d/platform/orders`)
+- **Shareable URLs** — every diagram layer has its own route (`/platform/orders`)
 - **Highlight mode** — click a node to dim everything except its connections
 - **Search** — type to filter nodes by name or description
 - **PNG export** — download the current view as an image
