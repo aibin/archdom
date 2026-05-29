@@ -9,15 +9,18 @@ import ReactFlow, {
   ReactFlowProvider,
   Node,
   Edge,
+  NodeChange,
   NodeMouseHandler,
 } from 'reactflow'
 import { toPng } from 'html-to-image'
 import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
-import { C4NodeData, YamlLayer, YamlEdge, DiagramType, YamlGroup } from './types'
-import { loadYaml, yamlCache } from './yamlLoader'
+import { C4NodeData, MetaFile, SelfLoop, YamlLayer, YamlEdge, DiagramType, YamlGroup } from './types'
+import { loadYaml, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
 import { Legend } from './Legend'
+import { MetaOverlay } from './MetaOverlay'
+import { SelfLoopOverlay } from './SelfLoopOverlay'
 import { edgeAppearance, edgeLabel } from './diagramUtils'
 
 // ── Diagram type badge ────────────────────────────────────────────────────────
@@ -62,14 +65,41 @@ function DiagramBadge({ layer }: { layer: YamlLayer | null }) {
   )
 }
 
+// ── Edge validation ───────────────────────────────────────────────────────────
+
+function validateEdges(edges: YamlEdge[]): void {
+  const seen = new Set<string>()
+  for (const e of edges) {
+    if (e.from === e.to) continue  // self-loops are intentional
+    const fwd = `${e.from}→${e.to}`
+    const rev = `${e.to}→${e.from}`
+    if (seen.has(rev)) {
+      throw new Error(
+        `Edge conflict: "${e.from} → ${e.to}" and "${e.to} → ${e.from}" are both defined.\n` +
+        `Remove one and add  bidirectional: true  to the remaining edge instead.`
+      )
+    }
+    seen.add(fwd)
+  }
+}
+
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 const GPAD       = 28  // horizontal / bottom padding inside the group box
 const GHEAD_BASE = 40  // top padding when no description
 const GHEAD_DESC = 62  // top padding when description is present
 
-function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge[] } {
+function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: Node<C4NodeData>[]; edges: Edge[] } {
+  validateEdges(layer.edges ?? [])
   const groups: YamlGroup[] = layer.groups ?? []
+
+  // Collect self-loops per node (rendered as an icon, not a canvas edge)
+  const selfLoopMap = new Map<string, SelfLoop[]>()
+  ;(layer.edges ?? []).filter(e => e.from === e.to).forEach(e => {
+    const list = selfLoopMap.get(e.from) ?? []
+    list.push({ label: e.label, technology: e.technology, style: e.style, meta: e.meta })
+    selfLoopMap.set(e.from, list)
+  })
   const nodeGroupOf = new Map<string, string>()
   groups.forEach(grp => grp.nodeIds.forEach(id => nodeGroupOf.set(id, grp.id)))
 
@@ -81,7 +111,7 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
   groups.forEach(grp => {
     const ig = new dagre.graphlib.Graph()
     ig.setDefaultEdgeLabel(() => ({}))
-    ig.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 60 })
+    ig.setGraph({ rankdir: 'TB', nodesep: 70, ranksep: 90 })
 
     grp.nodeIds.forEach(id => {
       const n = layer.nodes.find(n => n.id === id)
@@ -89,10 +119,13 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
       const { w, h } = getNodeSize(n.type ?? 'service')
       ig.setNode(id, { width: w, height: h })
     })
-    // Only edges between this group's own members
+    // Only edges between this group's own members (skip self-loops)
     ;(layer.edges ?? []).forEach(e => {
-      if (nodeGroupOf.get(e.from) === grp.id && nodeGroupOf.get(e.to) === grp.id)
-        ig.setEdge(e.from, e.to)
+      if (e.from === e.to) return
+      if (nodeGroupOf.get(e.from) === grp.id && nodeGroupOf.get(e.to) === grp.id) {
+        const lbl = edgeLabel(e) ?? ''
+        ig.setEdge(e.from, e.to, { width: lbl.length * 6, height: lbl ? 18 : 0 })
+      }
     })
     dagre.layout(ig)
 
@@ -120,7 +153,7 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
   // ── Pass 2: outer dagre — standalone nodes + one virtual node per group ───
   const og = new dagre.graphlib.Graph()
   og.setDefaultEdgeLabel(() => ({}))
-  og.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 100 })
+  og.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 130 })
 
   layer.nodes.forEach(n => {
     if (nodeGroupOf.has(n.id)) return
@@ -137,9 +170,13 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
   ;(layer.edges ?? []).forEach(e => {
     const from = nodeGroupOf.get(e.from) ?? e.from
     const to   = nodeGroupOf.get(e.to)   ?? e.to
-    if (from === to) return
+    if (from === to) return  // skip self-loops and intra-group edges
     const key = `${from}→${to}`
-    if (!outerSeen.has(key)) { outerSeen.add(key); og.setEdge(from, to) }
+    if (!outerSeen.has(key)) {
+      const lbl = edgeLabel(e) ?? ''
+      outerSeen.add(key)
+      og.setEdge(from, to, { width: lbl.length * 6, height: lbl ? 18 : 0 })
+    }
   })
   dagre.layout(og)
 
@@ -172,7 +209,8 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
         width: rel.w, height: rel.h, zIndex: 1,
         data: {
           name: n.name, description: n.description ?? '', technology: n.technology ?? '',
-          nodeType, file: n.file, external: n.external, link: n.link, theme: layer.theme,
+          nodeType, file: n.file, external: n.external, link: n.link, meta: n.meta,
+          selfLoops: selfLoopMap.get(n.id), theme: layer.theme,
         },
       })
     })
@@ -185,21 +223,33 @@ function applyLayout(layer: YamlLayer): { nodes: Node<C4NodeData>[]; edges: Edge
     const { w, h } = getNodeSize(nodeType)
     const on = og.node(n.id)
     if (!on) return
+    const dagrePos = { x: on.x - w / 2, y: on.y - h / 2 }
     flowNodes.push({
       id: n.id, type: getFlowType(nodeType),
-      position: { x: on.x - w / 2, y: on.y - h / 2 },
+      position: savedPos[n.id] ?? dagrePos,
       width: w, height: h, zIndex: 1,
       data: {
         name: n.name, description: n.description ?? '', technology: n.technology ?? '',
-        nodeType, file: n.file, external: n.external, link: n.link, theme: layer.theme,
+        nodeType, file: n.file, external: n.external, link: n.link, meta: n.meta, theme: layer.theme,
       },
     })
   })
 
-  const edges: Edge[] = (layer.edges ?? []).map((e, i) => ({
-    id: `e-${i}`, source: e.from, target: e.to,
-    label: edgeLabel(e), ...edgeAppearance(e.style),
-  }))
+  // Map YAML anchor value → React Flow handle id.
+  // "top"/"bottom" as sourceAnchor use their id'd handles; default source (no anchor) falls
+  // back to the id-less bottom handle. Same logic inverted for targetAnchor.
+  const srcHandle = (a?: string) => a ?? undefined           // all four ids are valid; undefined = default
+  const tgtHandle = (a?: string) => a ?? undefined
+
+  const edges: Edge[] = (layer.edges ?? [])
+    .filter(e => e.from !== e.to)  // self-loops become node icons, not canvas edges
+    .map((e, i) => ({
+      id: `e-${i}`, source: e.from, target: e.to,
+      label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),
+      ...(e.sourceAnchor && { sourceHandle: srcHandle(e.sourceAnchor) }),
+      ...(e.targetAnchor && { targetHandle: tgtHandle(e.targetAnchor) }),
+      data: { meta: e.meta },
+    }))
 
   return { nodes: flowNodes, edges }
 }
@@ -210,9 +260,11 @@ interface Props {
   yamlPath: string
   onDrillIn: (path: string, name: string) => void
   refreshToken?: number
+  onLayoutSaving?: () => void
+  onLayoutSaved?: () => void
 }
 
-function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
+function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayoutSaved }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [fitPending, setFitPending] = useState(false)
@@ -228,10 +280,19 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
   const [legendOpen, setLegendOpen] = useState(false)
   const [exporting, setExporting]   = useState(false)
 
+  type MetaState = { path: string; title: string; loading: boolean; data: MetaFile | null; error: string | null }
+  const [metaOverlay, setMetaOverlay] = useState<MetaState | null>(null)
+
+  type SelfLoopState = { loops: SelfLoop[]; nodeName: string }
+  const [selfLoopOverlay, setSelfLoopOverlay] = useState<SelfLoopState | null>(null)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const { fitView, setViewport } = useReactFlow()
   const fitViewRef = useRef(fitView)
   fitViewRef.current = fitView
+
+  const nodesRef   = useRef(nodes)
+  nodesRef.current = nodes
 
   // ── Fit view after layout ──────────────────────────────────────────────────
   useEffect(() => {
@@ -242,12 +303,15 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
   }, [fitPending, setViewport])
 
   // ── Load YAML ──────────────────────────────────────────────────────────────
-  const loadAndLayout = useCallback(async (path: string) => {
+  const loadAndLayout = useCallback(async (path: string, resetPos = false) => {
     try {
-      const l = await loadYaml(path)
+      const [l, savedPos] = await Promise.all([
+        loadYaml(path),
+        resetPos ? Promise.resolve({} as NodePositions) : loadPositions(path),
+      ])
       setLayer(l)
       setError(null)
-      const { nodes: ln, edges: le } = applyLayout(l)
+      const { nodes: ln, edges: le } = applyLayout(l, savedPos)
       setNodes(ln)
       setEdges(le)
       setFitPending(true)
@@ -278,6 +342,20 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
     setHighlightId(prev => prev === id ? null : id)
   }, [])
 
+  // ── Self-loop overlay ─────────────────────────────────────────────────────
+  const handleShowSelfLoop = useCallback((loops: SelfLoop[], nodeName: string) => {
+    setSelfLoopOverlay({ loops, nodeName })
+    setMetaOverlay(null)
+  }, [])
+
+  // ── Meta overlay ──────────────────────────────────────────────────────────
+  const handleShowMeta = useCallback((metaPath: string, title: string) => {
+    setMetaOverlay({ path: metaPath, title, loading: true, data: null, error: null })
+    loadMetaFile(metaPath)
+      .then(data => setMetaOverlay(prev => prev?.path === metaPath ? { ...prev, loading: false, data } : prev))
+      .catch(err => setMetaOverlay(prev => prev?.path === metaPath ? { ...prev, loading: false, error: String(err) } : prev))
+  }, [])
+
   // ── Display nodes/edges: highlight + search + inject callbacks ─────────────
   const [displayNodes, displayEdges] = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -297,7 +375,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
 
     const mappedNodes = nodes.map(n => {
       // Group nodes are structural context — never dim them
-      if (n.type === 'group') return { ...n, data: { ...n.data, onHighlight: handleHighlight } }
+      if (n.type === 'group') return { ...n, data: { ...n.data, onHighlight: handleHighlight, onInfo: handleShowMeta, onSelfLoop: handleShowSelfLoop } }
 
       let opacity = 1
       if (highlightId) {
@@ -309,7 +387,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
       return {
         ...n,
         style: opacity < 1 ? { opacity } : {},
-        data: { ...n.data, highlighted: n.id === highlightId, onHighlight: handleHighlight },
+        data: { ...n.data, highlighted: n.id === highlightId, onHighlight: handleHighlight, onInfo: handleShowMeta, onSelfLoop: handleShowSelfLoop },
       }
     })
 
@@ -335,7 +413,41 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
     })
 
     return [mappedNodes, mappedEdges]
-  }, [nodes, edges, highlightId, selectedEdgeId, searchQuery, handleHighlight])
+  }, [nodes, edges, highlightId, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta, handleShowSelfLoop])
+
+  // ── Node drag → auto-save positions ───────────────────────────────────────
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    onNodesChange(changes)
+
+    // Only act on drag-end events
+    const dragEnds = changes.filter(c => c.type === 'position' && c.dragging === false)
+    if (!dragEnds.length) return
+
+    onLayoutSaving?.()
+
+    // Snapshot positions NOW (before any navigation updates state).
+    // nodesRef reflects the pre-change state, so override the moved
+    // node(s) with the final position from the change event itself.
+    const pos: NodePositions = {}
+    nodesRef.current
+      .filter(n => n.type !== 'group')
+      .forEach(n => { pos[n.id] = n.position })
+    dragEnds.forEach(c => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ch = c as any
+      if (ch.position) pos[ch.id as string] = ch.position
+    })
+
+    // Save immediately — no debounce needed since each drag produces exactly
+    // one drag-end event, and the path + positions are already captured above.
+    savePositions(yamlPath, pos).then(() => onLayoutSaved?.())
+  }, [onNodesChange, yamlPath, onLayoutSaving, onLayoutSaved])
+
+  // ── Reset layout ───────────────────────────────────────────────────────────
+  const handleResetLayout = useCallback(async () => {
+    await clearPositions(yamlPath)
+    loadAndLayout(yamlPath, true)
+  }, [yamlPath, loadAndLayout])
 
   // ── Keyboard: Enter → drill into highlighted node ──────────────────────────
   useEffect(() => {
@@ -361,11 +473,17 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
 
   const handleEdgeClick = useCallback((_e: React.MouseEvent, edge: Edge) => {
     setSelectedEdgeId(prev => prev === edge.id ? null : edge.id)
-  }, [])
+    if (edge.data?.meta) {
+      const title = (typeof edge.label === 'string' ? edge.label : undefined) ?? `${edge.source} → ${edge.target}`
+      handleShowMeta(edge.data.meta as string, title)
+    }
+  }, [handleShowMeta])
 
   const handlePaneClick = useCallback(() => {
     setHighlightId(null)
     setSelectedEdgeId(null)
+    setMetaOverlay(null)
+    setSelfLoopOverlay(null)
   }, [])
 
   // ── Export PNG ─────────────────────────────────────────────────────────────
@@ -390,7 +508,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
@@ -417,6 +535,13 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
           style={styles.search}
         />
         <button
+          onClick={handleResetLayout}
+          title="Reset to auto-layout (clears saved positions)"
+          style={styles.iconBtn}
+        >
+          ⊞ Reset layout
+        </button>
+        <button
           onClick={handleExport}
           disabled={exporting}
           title="Export as PNG"
@@ -439,6 +564,27 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken }: Props) {
       {/* Legend panel */}
       {legendOpen && <Legend onClose={() => setLegendOpen(false)} theme={layer?.theme} />}
 
+      {/* Metadata overlay */}
+      {metaOverlay && (
+        <MetaOverlay
+          title={metaOverlay.title}
+          loading={metaOverlay.loading}
+          error={metaOverlay.error}
+          meta={metaOverlay.data}
+          onClose={() => setMetaOverlay(null)}
+        />
+      )}
+
+      {/* Self-loop overlay */}
+      {selfLoopOverlay && (
+        <SelfLoopOverlay
+          nodeName={selfLoopOverlay.nodeName}
+          loops={selfLoopOverlay.loops}
+          onClose={() => setSelfLoopOverlay(null)}
+          onMeta={(path, title) => { setSelfLoopOverlay(null); handleShowMeta(path, title) }}
+        />
+      )}
+
       {/* Keyboard hint */}
       <div style={styles.hint}>
         click to open · 👁 to highlight connections · ⎋ go back
@@ -459,6 +605,8 @@ export function DiagramView(props: Props) {
     </ReactFlowProvider>
   )
 }
+
+export type { Props as DiagramViewProps }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

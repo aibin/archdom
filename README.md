@@ -13,8 +13,11 @@ Archdom lets you describe your software architecture in plain YAML files and ren
 - **Zero-backend** — diagrams are static YAML files served alongside the app
 - **Infinite drill-down** — any node can link to a child YAML file; breadcrumb tracks your path
 - **10 node types** — Service, SPA, Server App, Boundary, DB, S3, Directory, User, Deployment Node, Infrastructure Node
-- **4 edge styles** — sync, async, event (animated), depends
+- **4 edge styles** — sync, async, event (animated), depends; plus bidirectional and self-loop variants
 - **7 diagram types** — System Context (L1), Container (L2), Component (L3), Code (L4), System Landscape, Dynamic, Deployment
+- **Bidirectional edges** — single edge with `bidirectional: true`; conflicting opposing edges are caught at load time
+- **Self-loop edges** — `from`/`to` pointing to the same node adds an amber ↺ icon to the node; clicking it lists every self-reference with its label and style
+- **Metadata overlays** — attach a YAML sidecar (`meta:`) to any node or edge; clicking the ⓘ button opens a rich info panel
 - **External system flag** — grey styling for third-party dependencies
 - **Dynamic diagrams** — numbered interaction steps (①②③…) for use-case walkthroughs
 - **Deployment diagrams** — infrastructure nodes, deployment environments
@@ -109,6 +112,7 @@ edges:
 | `type` | string | | Shape and colour (default: `service`) |
 | `file` | string | | Path to a child YAML file — makes the node drillable |
 | `external` | boolean | | Grey styling — marks systems outside your ownership |
+| `meta` | string | | Path to a metadata YAML sidecar — adds a ⓘ button that opens an info overlay |
 
 ### Node types
 
@@ -137,6 +141,10 @@ Add `external: true` to any node to render it in grey, marking it as a system or
 | `technology` | string | | Protocol or technology, e.g. `gRPC`, `Kafka`, `HTTPS` |
 | `style` | string | | Visual style (default: `sync`) |
 | `step` | integer | | Sequence number for dynamic diagrams — prefixes the label with ①②③… |
+| `bidirectional` | boolean | | Render arrows on both ends — use instead of two opposing edges |
+| `sourceAnchor` | string | | Side of the source node the edge departs from: `top` \| `bottom` \| `left` \| `right`. Default: `bottom` |
+| `targetAnchor` | string | | Side of the target node the edge arrives at: `top` \| `bottom` \| `left` \| `right`. Default: `top` |
+| `meta` | string | | Path to a metadata YAML sidecar — clicking the edge opens an info overlay |
 
 ### Edge styles
 
@@ -146,6 +154,8 @@ Add `external: true` to any node to render it in grey, marking it as a system or
 | `async` | Dashed arrow | Asynchronous message, queue, or fire-and-forget |
 | `event` | Animated purple arrow | Domain event published to a bus or topic |
 | `depends` | Dotted line | Dependency with no clear call direction |
+
+Set `bidirectional: true` on any style to add an arrow at both ends (rendered in cyan). Setting `from` and `to` to the **same node id** creates a self-loop — it does not render as a canvas edge. Instead an amber ↺ icon appears in the node header; clicking it opens a detail overlay.
 
 ---
 
@@ -260,6 +270,83 @@ edges:
 
 ---
 
+## Bidirectional edges
+
+When two nodes communicate in both directions define a **single** edge with `bidirectional: true`. Archdom renders it with arrowheads on both ends.
+
+```yaml
+edges:
+  - from: api-gateway
+    to: orders-service
+    label: Read / write orders
+    style: sync
+    bidirectional: true
+```
+
+> **Validation rule:** Defining two opposing edges — `A → B` and `B → A` — is an error. The diagram will refuse to load with a clear message asking you to merge them into one bidirectional edge.
+
+---
+
+## Self-loop edges
+
+Set `from` and `to` to the **same node id** to define a self-loop. Archdom does not draw a canvas arc — instead it adds an amber **↺ icon** to the node's header strip. Clicking the icon opens a compact overlay listing every self-loop on that node: its label, technology, and edge style. Attach `meta:` to a self-loop edge to get an ⓘ button inside the overlay.
+
+```yaml
+edges:
+  - from: reconciliation-engine
+    to: reconciliation-engine
+    label: Retry on mismatch
+    style: async
+```
+
+A node can have multiple self-loops; all appear as rows in the same overlay.
+
+---
+
+## Node & edge metadata files
+
+Attach a YAML sidecar to any node or edge using the `meta:` field. The file path is relative to the root of your open folder.
+
+```yaml
+nodes:
+  - id: ledger-api
+    name: Ledger API
+    type: server-app
+    meta: platform/accounting/ledger-api.meta.yaml
+
+edges:
+  - from: ledger-api
+    to: journal-processor
+    label: Post journal entries
+    meta: platform/accounting/journal-post.meta.yaml
+```
+
+- **Nodes** — a ⓘ button appears in the node header strip. Click it to open the overlay.
+- **Edges** — clicking the edge opens the overlay (in addition to the normal red-highlight selection).
+
+### Metadata file format
+
+All fields are optional. Any extra key–value pairs are displayed as-is.
+
+```yaml
+title: Ledger API                      # overrides node name in the overlay header
+owner: Finance Platform Team
+status: active                         # active | stable | deprecated | planned | in-progress | beta
+description: |
+  Multi-line description shown in the overlay.
+  Supports plain-text paragraphs.
+sla: 99.9% uptime                      # arbitrary extra fields
+links:
+  - label: OpenAPI Spec
+    url: https://docs.example.com/ledger-api/openapi
+  - label: Runbook
+    url: https://wiki.example.com/runbooks/ledger-api
+```
+
+The `status` field renders as a colour-coded badge: green for `active`/`stable`, amber for `planned`/`in-progress`/`beta`, red for `deprecated`.
+
+---
+
 ## External systems
 
 Mark any node `external: true` to render it in grey, visually separating it from systems your team owns.
@@ -282,6 +369,26 @@ nodes:
 
 ---
 
+## Persisting custom layouts
+
+Drag any node to rearrange a diagram. Archdom saves positions automatically the moment you release — no button needed. The header shows **Saving…** while writing, then **Saved** once done.
+
+All layer positions live in a single **`archdom.positions.json`** file at the root of your open folder, keyed by yaml path:
+
+```json
+{
+  "index.yaml":               { "finledger": { "x": 250, "y": 80 } },
+  "platform.yaml":            { "api-gateway": { "x": 120, "y": 200 } },
+  "platform/accounting.yaml": { "ledger-api": { "x": 180, "y": 60 } }
+}
+```
+
+- New nodes added to a YAML after a save fall back to auto-layout; existing positions are preserved.
+- Click **⊞ Reset layout** in the canvas toolbar to discard saved positions for the current layer.
+- Commit `archdom.positions.json` to share custom layouts with your team, or add it to `.gitignore` to keep layouts local.
+
+---
+
 ## Shareable links
 
 Every diagram layer is a real URL. Copy the browser address bar to share a direct link to any level of your architecture with teammates. Deep links work on refresh — the app rebuilds the breadcrumb trail automatically from the URL.
@@ -294,9 +401,14 @@ Every diagram layer is a real URL. Copy the browser address bar to share a direc
 |---|---|
 | Drill into a layer | Click any node that has a `file:` field (shows ⬇) |
 | Go back | Press **Escape** or click a breadcrumb item in the header |
-| Highlight connections | Click a node |
+| Highlight connections | Click the 👁 icon on a node |
 | Clear highlight | Click the highlighted node again, or click the canvas background |
 | Drill highlighted node | Press **Enter** while a node is highlighted |
+| Open metadata overlay | Click the ⓘ button on any node with `meta:` set; or click an edge with `meta:` set |
+| Open self-loop overlay | Click the ↺ icon on any node that has self-loop edges |
+| Close overlays | Click ✕ in the overlay, or click the canvas background |
+| Save layout | Drag any node — positions auto-save to `archdom.positions.json` at the folder root. Header shows **Saving…** then **Saved**. |
+| Reset layout | Click **⊞ Reset layout** in the canvas toolbar to revert the current layer to auto-layout |
 | Search / filter | Type in the search box (top-right) — non-matching nodes dim to 12% opacity |
 | Legend | Click **☰ Legend** to see all node shapes and edge styles |
 | Export PNG | Click **⬇ PNG** — fits the view then downloads as `<diagram-name>.png` |
@@ -315,18 +427,22 @@ archdom/
 │   ├── src/
 │   │   ├── main.tsx            # App entry, BrowserRouter
 │   │   ├── App.tsx             # Landing page, folder picker, routing
-│   │   ├── DiagramView.tsx     # ReactFlow canvas, layout, highlight, search, export
+│   │   ├── DiagramView.tsx     # ReactFlow canvas, layout, validation, export
 │   │   ├── Breadcrumb.tsx      # URL-driven breadcrumb nav
 │   │   ├── Legend.tsx          # Toggleable legend panel
 │   │   ├── Help.tsx            # /help full-page authoring guide
-│   │   ├── yamlLoader.ts       # File System Access API loader + cache
+│   │   ├── MetaOverlay.tsx     # Node / edge metadata overlay
+│   │   ├── SelfLoopOverlay.tsx # Self-loop detail overlay
+│   │   ├── yamlLoader.ts       # File System Access API loader + position persistence
 │   │   ├── types.ts            # TypeScript interfaces
+│   │   ├── diagramUtils.ts     # Edge appearance helpers
 │   │   └── nodes/
-│   │       └── C4Node.tsx      # All 10 node shape components
+│   │       └── Node.tsx        # All node shape components
 │   └── index.html
 ├── example/                    # Example diagrams (open this folder in the app)
 │   ├── index.yaml
 │   ├── platform.yaml
+│   ├── archdom.positions.json  # saved layout positions (created on first drag)
 │   └── platform/
 ├── .vscode/
 │   └── settings.json

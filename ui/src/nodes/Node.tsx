@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { C4NodeData } from '../types'
+import { C4NodeData, SelfLoop } from '../types'
 
 // ── Icon base ─────────────────────────────────────────────────────────────────
 
@@ -145,6 +145,34 @@ export function getColor(nodeType: string, theme?: Record<string, string>, isExt
   return theme?.[nodeType] ?? TYPES[nodeType]?.color ?? FALLBACK.color
 }
 
+// ── All-sides handle block ────────────────────────────────────────────────────
+// Each node gets handles on all four sides so edges can depart/arrive anywhere.
+// id'd handles are selected by sourceAnchor/targetAnchor in the YAML.
+// The no-id top (target) and no-id bottom (source) are the defaults used by
+// edges that don't specify an anchor.
+
+function Handles({ topOffset, bottomOffset }: { topOffset?: number; bottomOffset?: number }) {
+  const ts = (extra?: object) => ({ ...sh.handle, ...extra }) as React.CSSProperties
+  return (
+    <>
+      {/* top */}
+      <Handle type="target" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
+      <Handle type="source" id="top" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
+      <Handle type="target" id="top" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
+      {/* left */}
+      <Handle type="source" id="left" position={Position.Left} style={ts()} />
+      <Handle type="target" id="left" position={Position.Left} style={ts()} />
+      {/* right */}
+      <Handle type="source" id="right" position={Position.Right} style={ts()} />
+      <Handle type="target" id="right" position={Position.Right} style={ts()} />
+      {/* bottom */}
+      <Handle type="source" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
+      <Handle type="source" id="bottom" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
+      <Handle type="target" id="bottom" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
+    </>
+  )
+}
+
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const sh = {
@@ -207,6 +235,54 @@ function HighlightBtn({ id, highlighted, onHighlight }: {
   )
 }
 
+function SelfLoopBtn({ loops, name, onSelfLoop }: {
+  loops?: SelfLoop[]
+  name: string
+  onSelfLoop?: (loops: SelfLoop[], nodeName: string) => void
+}) {
+  if (!loops?.length || !onSelfLoop) return null
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onSelfLoop(loops, name) }}
+      title={`Self-reference${loops.length > 1 ? 's' : ''}: ${loops.map(l => l.label ?? '—').join(', ')}`}
+      style={{
+        background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer',
+        color: '#f59e0b',
+        display: 'flex', alignItems: 'center', flexShrink: 0,
+      }}
+    >
+      <Ic size={13}>
+        <polyline points="1 4 1 10 7 10" />
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+      </Ic>
+    </button>
+  )
+}
+
+function InfoBtn({ meta, name, onInfo }: {
+  meta?: string
+  name: string
+  onInfo?: (metaPath: string, title: string) => void
+}) {
+  if (!meta || !onInfo) return null
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onInfo(meta, name) }}
+      title="Show information"
+      style={{
+        background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer',
+        color: 'rgba(255,255,255,0.55)',
+        display: 'flex', alignItems: 'center', flexShrink: 0,
+      }}
+    >
+      <Ic size={13}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 16v-4m0-4h.01" />
+      </Ic>
+    </button>
+  )
+}
+
 // ── Rectangle node  (service · spa · server-app · boundary · infrastructure-node) ──
 
 export const RectNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
@@ -225,18 +301,19 @@ export const RectNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
       opacity: data.external ? 0.85 : 1,
     }}>
-      <Handle type="target" position={Position.Top} style={sh.handle} />
+      <Handles />
       <div style={{ ...sh.strip, background: color }}>
         {icon}
+        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={sh.lbl}>{label}</span>
         <DrillBadge file={data.file} />
         <LinkBtn link={data.link} />
+        <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
       </div>
       <div style={sh.name}>{data.name}</div>
       {data.technology && <div style={sh.tech}>[{data.technology}]</div>}
       {data.description && <div style={sh.desc}>{data.description}</div>}
-      <Handle type="source" position={Position.Bottom} style={sh.handle} />
     </div>
   )
 })
@@ -251,7 +328,7 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
   const label = `${cfg.label}${data.external ? ' · Ext' : ''}`
   return (
     <div style={{ width: 200, cursor: data.file ? 'pointer' : 'default', position: 'relative' }}>
-      <Handle type="target" position={Position.Top} style={{ ...sh.handle, top: 10 }} />
+      <Handles topOffset={10} bottomOffset={10} />
 
       <div style={{
         height: 22, borderRadius: '50%',
@@ -260,11 +337,13 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
         gap: 5, color: '#fff', position: 'relative', zIndex: 1,
       }}>
         {icon}
+        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           {label}
         </span>
         <DrillBadge file={data.file} />
         <LinkBtn link={data.link} />
+        <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
       </div>
 
@@ -287,7 +366,6 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
         position: 'relative', zIndex: 1,
       }} />
 
-      <Handle type="source" position={Position.Bottom} style={{ ...sh.handle, bottom: 10 }} />
     </div>
   )
 })
@@ -299,7 +377,7 @@ export const FolderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
   const color = getColor('directory', data.theme, data.external)
   return (
     <div style={{ width: 210, cursor: data.file ? 'pointer' : 'default' }}>
-      <Handle type="target" position={Position.Top} style={{ ...sh.handle, top: 4 }} />
+      <Handles topOffset={4} />
 
       <div style={{
         width: '45%', height: 12,
@@ -316,17 +394,17 @@ export const FolderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       }}>
         <div style={{ ...sh.strip, background: color }}>
           {icons.directory}
+          <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
           <span style={sh.lbl}>{TYPES.directory.label}{data.external ? ' · Ext' : ''}</span>
           <DrillBadge file={data.file} />
           <LinkBtn link={data.link} />
+          <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
           <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
         </div>
         <div style={sh.name}>{data.name}</div>
         {data.technology && <div style={sh.tech}>[{data.technology}]</div>}
         {data.description && <div style={sh.desc}>{data.description}</div>}
       </div>
-
-      <Handle type="source" position={Position.Bottom} style={sh.handle} />
     </div>
   )
 })
@@ -348,7 +426,7 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       textAlign: 'center', padding: '0 8px', boxSizing: 'border-box',
       boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
     }}>
-      <Handle type="target" position={Position.Top} style={{ ...sh.handle, top: 6 }} />
+      <Handles topOffset={6} bottomOffset={6} />
 
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
         stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -365,11 +443,12 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
         {data.file && <span style={{ fontSize: 9, color: '#94a3b8' }}>⬇</span>}
+        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <LinkBtn link={data.link} />
+        <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
       </div>
 
-      <Handle type="source" position={Position.Bottom} style={{ ...sh.handle, bottom: 6 }} />
     </div>
   )
 })
@@ -388,9 +467,10 @@ export const DeploymentNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       cursor: data.file ? 'pointer' : 'default',
       boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
     }}>
-      <Handle type="target" position={Position.Top} style={sh.handle} />
+      <Handles />
       <div style={{ ...sh.strip, background: 'rgba(29,78,216,0.35)' }}>
         {icons['deployment-node']}
+        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={sh.lbl}>{TYPES['deployment-node'].label}</span>
         {data.technology && (
           <span style={{ fontSize: 10, opacity: 0.85, whiteSpace: 'nowrap' }}>
@@ -399,11 +479,11 @@ export const DeploymentNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
         )}
         <DrillBadge file={data.file} />
         <LinkBtn link={data.link} />
+        <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
       </div>
       <div style={sh.name}>{data.name}</div>
       {data.description && <div style={sh.desc}>{data.description}</div>}
-      <Handle type="source" position={Position.Bottom} style={sh.handle} />
     </div>
   )
 })

@@ -18,6 +18,7 @@ nodes:
     description: REST + gRPC interface for posting and querying journal entries
     technology: FastAPI + grpcio
     type: server-app
+    meta: platform/accounting/ledger-api.meta.yaml
 
   - id: journal-processor
     name: Journal Entry Processor
@@ -92,6 +93,7 @@ edges:
     to: journal-processor
     label: Post journal entries
     style: sync
+    meta: platform/accounting/journal-post.meta.yaml
   - from: ledger-api
     to: balance-calculator
     label: Query balances
@@ -136,6 +138,7 @@ edges:
     to: cache
     label: Cache balances
     style: sync
+    bidirectional: true  # cache also invalidates calculator on TTL expiry
   - from: currency-service
     to: fx-provider
     label: Fetch live rates
@@ -149,3 +152,7 @@ edges:
     to: ledger-db
     label: Lock period / post closing entries
     style: sync
+  - from: reconciliation-engine
+    to: reconciliation-engine
+    label: Retry on mismatch
+    style: async

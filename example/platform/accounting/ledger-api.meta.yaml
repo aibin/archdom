@@ -1,0 +1,18 @@
+title: Ledger API
+owner: Finance Platform Team
+status: active
+sla: 99.9% uptime (p99 < 50 ms)
+description: |
+  REST + gRPC interface for posting journal entries and querying account balances.
+  All mutations are append-only; the ledger table is never updated or deleted from.
+  Dual transport allows legacy REST clients and high-throughput internal gRPC callers
+  to share the same service boundary.
+links:
+  - label: OpenAPI Specification
+    url: https://docs.example.com/ledger-api/openapi
+  - label: gRPC Proto File
+    url: https://github.com/example/platform/blob/main/proto/ledger.proto
+  - label: Runbook
+    url: https://wiki.example.com/runbooks/ledger-api
+  - label: Grafana Dashboard
+    url: https://grafana.example.com/d/ledger-api

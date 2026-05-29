@@ -83,6 +83,7 @@ groups:
                 ['file',        'string',  'Path to a child YAML file — makes the node drillable (⬇).'],
                 ['link',        'string',  'URL opened in a new tab — shows a 🔗 icon on the node.'],
                 ['external',    'boolean', 'Grey styling — marks systems outside your ownership.'],
+                ['meta',        'string',  'Path to a metadata YAML file. Adds an ⓘ info button that opens an overlay with ownership, links, and other detail.'],
               ]}
             />
           </Section>
@@ -159,12 +160,16 @@ groups:
             <Table
               cols={['Field', 'Type', 'Description']}
               rows={[
-                ['from',       'string',  'Required. Source node id.'],
-                ['to',         'string',  'Required. Target node id.'],
-                ['label',      'string',  'Short description of the relationship.'],
-                ['technology', 'string',  'Protocol used, e.g. gRPC, Kafka, HTTPS.'],
-                ['style',      'string',  'Visual style — sync | async | event | depends.'],
-                ['step',       'integer', 'Sequence number for dynamic diagrams. Prefixes label with ①②③…'],
+                ['from',          'string',  'Required. Source node id.'],
+                ['to',            'string',  'Required. Target node id.'],
+                ['label',         'string',  'Short description of the relationship.'],
+                ['technology',    'string',  'Protocol used, e.g. gRPC, Kafka, HTTPS.'],
+                ['style',         'string',  'Visual style — sync | async | event | depends.'],
+                ['step',          'integer', 'Sequence number for dynamic diagrams. Prefixes label with ①②③…'],
+                ['bidirectional', 'boolean', 'Renders arrows on both ends of the edge. Use instead of defining two opposing edges.'],
+                ['sourceAnchor',  'string',  'Side of the source node the edge departs from: top | bottom | left | right. Default: bottom.'],
+                ['targetAnchor',  'string',  'Side of the target node the edge arrives at: top | bottom | left | right. Default: top.'],
+                ['meta',          'string',  'Path to a metadata YAML file. Clicking the edge opens the info overlay.'],
               ]}
             />
           </Section>
@@ -173,12 +178,110 @@ groups:
             <Table
               cols={['style', 'Appearance', 'Use for']}
               rows={[
-                ['sync',    'Solid arrow',           'Synchronous request / response (default)'],
-                ['async',   'Dashed arrow',           'Asynchronous message, queue, or fire-and-forget'],
-                ['event',   'Animated purple arrow',  'Domain event published to a bus or topic'],
-                ['depends', 'Dotted line',            'Dependency with no clear call direction'],
+                ['sync',    'Solid arrow',              'Synchronous request / response (default)'],
+                ['async',   'Dashed arrow',              'Asynchronous message, queue, or fire-and-forget'],
+                ['event',   'Animated purple arrow',     'Domain event published to a bus or topic'],
+                ['depends', 'Dotted line',               'Dependency with no clear call direction'],
+                ['—',       'Double cyan arrow (bidirectional)', 'Two-way communication — add bidirectional: true to any style'],
               ]}
             />
+          </Section>
+
+          <Section title="Edge anchors">
+            <p style={styles.p}>
+              By default edges depart from the <strong style={{ color: '#e2e8f0' }}>bottom</strong> of
+              the source node and arrive at the <strong style={{ color: '#e2e8f0' }}>top</strong> of the
+              target node. Use <Code>sourceAnchor</Code> and <Code>targetAnchor</Code> to
+              route an edge from any of the four sides instead.
+            </p>
+            <Pre>{`edges:
+  # default — bottom of source → top of target
+  - from: api
+    to: db
+    label: SQL
+
+  # side-by-side flow — right of source → left of target
+  - from: web
+    to: api
+    label: HTTPS
+    sourceAnchor: right
+    targetAnchor: left
+
+  # reverse vertical — top of source → bottom of target
+  - from: cache
+    to: api
+    label: Invalidate
+    sourceAnchor: top
+    targetAnchor: bottom`}</Pre>
+          </Section>
+
+          <Section title="Bidirectional edges">
+            <p style={styles.p}>
+              When two nodes communicate in both directions, define a single edge and set{' '}
+              <Code>bidirectional: true</Code>. Defining two opposing edges (A→B and B→A) is
+              a validation error — the diagram will refuse to load with a clear message.
+            </p>
+            <Pre>{`edges:
+  - from: api-gateway
+    to: orders-service
+    label: Read / write orders
+    style: sync
+    bidirectional: true   # renders arrows on both ends`}</Pre>
+          </Section>
+
+          <Section title="Self-loop edges">
+            <p style={styles.p}>
+              Set <Code>from</Code> and <Code>to</Code> to the same node id to define a self-loop.
+              Instead of drawing a canvas arc, Archdom shows an amber <strong style={{ color: '#e2e8f0' }}>↺ icon</strong> in
+              the node's header strip. Clicking the icon opens a small overlay listing every
+              self-loop on that node — its label, technology, and edge style.
+              Use self-loops for retry logic, polling, or any in-node cycle.
+            </p>
+            <Pre>{`edges:
+  - from: reconciliation-engine
+    to: reconciliation-engine
+    label: Retry on mismatch
+    style: async
+    meta: platform/accounting/retry-policy.meta.yaml   # optional`}</Pre>
+            <p style={{ ...styles.p, marginTop: 8 }}>
+              A node can have multiple self-loops; all are listed in the overlay when the ↺ icon
+              is clicked.
+            </p>
+          </Section>
+
+          <Section title="Node & edge metadata files">
+            <p style={styles.p}>
+              Add <Code>meta: path/to/file.yaml</Code> to any node or edge. For nodes, an{' '}
+              <strong style={{ color: '#e2e8f0' }}>ⓘ info button</strong> appears in the node header.
+              For edges, clicking the edge opens the overlay. Both show the same metadata overlay.
+            </p>
+            <Pre>{`# in your diagram YAML
+nodes:
+  - id: ledger-api
+    name: Ledger API
+    type: server-app
+    meta: platform/accounting/ledger-api.meta.yaml
+
+edges:
+  - from: ledger-api
+    to: journal-processor
+    label: Post journal entries
+    meta: platform/accounting/journal-post.meta.yaml`}</Pre>
+            <p style={{ ...styles.p, marginTop: 8 }}>
+              The metadata file itself supports these fields (all optional):
+            </p>
+            <Pre>{`title: Ledger API                    # overrides node name in the overlay header
+owner: Finance Platform Team
+status: active                       # active | stable | deprecated | planned | in-progress | beta
+description: |
+  REST + gRPC interface for posting journal entries.
+  All mutations are append-only to the partitioned ledger table.
+sla: 99.9%                           # any extra key: value pairs are displayed
+links:
+  - label: OpenAPI Spec
+    url: https://docs.example.com/ledger-api
+  - label: Runbook
+    url: https://wiki.example.com/runbooks/ledger-api`}</Pre>
           </Section>
 
           <Section title="Dynamic diagram steps">
@@ -232,6 +335,36 @@ edges:
     style: sync`}</Pre>
           </Section>
 
+          <Section title="Persisting custom layouts">
+            <p style={styles.p}>
+              Drag any node to rearrange the diagram. Archdom auto-saves positions the moment you
+              release the drag — no button needed. The header shows{' '}
+              <strong style={{ color: '#e2e8f0' }}>Saving…</strong> while the write is in flight,
+              then <strong style={{ color: '#e2e8f0' }}>Saved</strong> once complete.
+            </p>
+            <p style={styles.p}>
+              All layer positions are stored in a single{' '}
+              <Code>archdom.positions.json</Code> file at the root of your open folder, keyed by
+              diagram layer path:
+            </p>
+            <Pre>{`{
+  "index.yaml":               { "finledger": { "x": 250, "y": 80 } },
+  "platform.yaml":            { "api-gateway": { "x": 120, "y": 200 } },
+  "platform/accounting.yaml": { "ledger-api":  { "x": 180, "y": 60 } }
+}`}</Pre>
+            <p style={{ ...styles.p, marginTop: 8 }}>
+              New nodes added to a YAML after a save fall back to auto-layout; existing saved nodes
+              keep their positions. Click <strong style={{ color: '#e2e8f0' }}>⊞ Reset layout</strong> in
+              the toolbar to discard saved positions for the current layer and revert to dagre
+              auto-layout.
+            </p>
+            <p style={{ ...styles.p, marginTop: 4 }}>
+              You can commit <Code>archdom.positions.json</Code> to version control to share
+              custom layouts with your team, or add it to <Code>.gitignore</Code> to keep
+              layouts local.
+            </p>
+          </Section>
+
           <Section title="URL structure & sharing">
             <Table
               cols={['URL', 'Loads']}
@@ -256,7 +389,9 @@ edges:
               rows={[
                 ['Click node (with file:)',  'Drill into that layer'],
                 ['👁 icon on node',          'Highlight that node\'s direct connections; click again or click the canvas to clear'],
-                ['Click edge label',         'Turn the edge and label red so it pops above overlapping elements; click again or click canvas to clear'],
+                ['ⓘ icon on node',          'Open the metadata overlay (only shown when meta: is set on the node)'],
+                ['↺ icon on node',           'Open self-loop overlay — lists every self-reference on that node with its label and style'],
+                ['Click edge',              'Turn the edge red; also opens metadata overlay if meta: is set on the edge'],
                 ['↵ Enter',                  'Drill into the currently highlighted node'],
                 ['⎋ Escape',                 'Go back one layer (browser back)'],
               ]}
@@ -269,6 +404,8 @@ edges:
               rows={[
                 ['Open Folder',   'Click Open Folder on the landing page to pick a local folder'],
                 ['Resync',        'Click the ↺ Resync button in the header to reload all YAML files from disk after you edit them'],
+                ['Save layout',   'Drag any node — positions are auto-saved to archdom.positions.json at the root of your open folder. The header shows "Saving…" then "Saved".'],
+                ['Reset layout',  'Click ⊞ Reset layout in the canvas toolbar to clear the current layer\'s saved positions and return to auto-layout.'],
                 ['Close Folder',  'Click × next to the folder badge in the header to close the current folder'],
                 ['Search nodes',  'Type in the search box (top-right) — non-matching nodes dim'],
                 ['Legend',        'Click ☰ Legend to see all shapes and edge styles'],

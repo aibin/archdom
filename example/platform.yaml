@@ -327,10 +327,6 @@ edges:
     to: doc-store
     label: Store generated files
     style: async
-  - from: notifications
-    to: bus
-    label: Consume domain events
-    style: depends
   - from: audit
     to: bus
     label: Consume all events

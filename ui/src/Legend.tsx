@@ -6,10 +6,11 @@ interface Props {
 }
 
 const EDGE_STYLES = [
-  { label: 'Sync',           stroke: '#475569', dasharray: undefined,  animated: false },
-  { label: 'Async',          stroke: '#64748b', dasharray: '8 4',      animated: false },
-  { label: 'Depends',        stroke: '#475569', dasharray: '3 5',      animated: false },
-  { label: 'Event',          stroke: '#7c6af7', dasharray: undefined,  animated: true  },
+  { label: 'Sync',          stroke: '#475569', dasharray: undefined, animated: false, bidir: false },
+  { label: 'Async',         stroke: '#64748b', dasharray: '8 4',     animated: false, bidir: false },
+  { label: 'Depends',       stroke: '#475569', dasharray: '3 5',     animated: false, bidir: false },
+  { label: 'Event',         stroke: '#7c6af7', dasharray: undefined, animated: true,  bidir: false },
+  { label: 'Bidirectional', stroke: '#06b6d4', dasharray: undefined, animated: false, bidir: true  },
 ]
 
 export function Legend({ onClose, theme }: Props) {
@@ -39,17 +40,22 @@ export function Legend({ onClose, theme }: Props) {
       <div style={styles.section}>Edge Styles</div>
       {EDGE_STYLES.map(e => (
         <div key={e.label} style={styles.row}>
-          <svg width={44} height={14} style={{ flexShrink: 0 }}>
+          <svg width={44} height={18} style={{ flexShrink: 0 }}>
             <defs>
               <marker id={`arr-${e.label}`} markerWidth="6" markerHeight="6"
                 refX="3" refY="3" orient="auto">
                 <path d="M0,0 L6,3 L0,6 Z" fill={e.stroke} />
               </marker>
+              <marker id={`arr-rev-${e.label}`} markerWidth="6" markerHeight="6"
+                refX="3" refY="3" orient="auto-start-reverse">
+                <path d="M0,0 L6,3 L0,6 Z" fill={e.stroke} />
+              </marker>
             </defs>
-            <line x1="2" y1="7" x2="38" y2="7"
+            <line x1="2" y1="9" x2="38" y2="9"
               stroke={e.stroke} strokeWidth="1.5"
               strokeDasharray={e.dasharray}
               markerEnd={`url(#arr-${e.label})`}
+              markerStart={e.bidir ? `url(#arr-rev-${e.label})` : undefined}
             />
           </svg>
           <span style={styles.rowLabel}>

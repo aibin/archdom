@@ -6,16 +6,51 @@ const LABEL_STYLE = {
   labelBgStyle: { fill: '#1e2235', fillOpacity: 0.85 },
 }
 
-export function edgeAppearance(style?: EdgeStyle): Partial<Edge> {
+const BIDIR_COLOR = '#06b6d4'  // cyan-500 — reserved for bidirectional edges
+
+function marker(color: string) {
+  return { type: MarkerType.ArrowClosed, color }
+}
+
+export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partial<Edge> {
+  if (bidirectional) {
+    const dasharray =
+      style === 'async'   ? '8 4' :
+      style === 'depends' ? '3 5' : undefined
+    return {
+      ...LABEL_STYLE,
+      animated: style === 'event',
+      style: { stroke: BIDIR_COLOR, strokeWidth: 1.5, ...(dasharray && { strokeDasharray: dasharray }) },
+      markerEnd:   marker(BIDIR_COLOR),
+      markerStart: marker(BIDIR_COLOR),
+    }
+  }
+
   switch (style) {
     case 'async':
-      return { ...LABEL_STYLE, style: { stroke: '#64748b', strokeWidth: 1.5, strokeDasharray: '8 4' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#64748b' } }
+      return {
+        ...LABEL_STYLE,
+        style: { stroke: '#64748b', strokeWidth: 1.5, strokeDasharray: '8 4' },
+        markerEnd: marker('#64748b'),
+      }
     case 'event':
-      return { ...LABEL_STYLE, animated: true, style: { stroke: '#7c6af7', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#7c6af7' } }
+      return {
+        ...LABEL_STYLE, animated: true,
+        style: { stroke: '#7c6af7', strokeWidth: 1.5 },
+        markerEnd: marker('#7c6af7'),
+      }
     case 'depends':
-      return { ...LABEL_STYLE, style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '3 5' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }
+      return {
+        ...LABEL_STYLE,
+        style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '3 5' },
+        markerEnd: marker('#475569'),
+      }
     default:
-      return { ...LABEL_STYLE, style: { stroke: '#475569', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }
+      return {
+        ...LABEL_STYLE,
+        style: { stroke: '#475569', strokeWidth: 1.5 },
+        markerEnd: marker('#475569'),
+      }
   }
 }
 
