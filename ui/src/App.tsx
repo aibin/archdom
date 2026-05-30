@@ -278,7 +278,7 @@ export default function App() {
   const openFolder = useCallback(async () => {
     if (!FSA_SUPPORTED) return
     try {
-      const handle = await _showDirectoryPicker!({ mode: 'read' })
+      const handle = await _showDirectoryPicker!({ mode: 'readwrite' })
       setDirectoryHandle(handle)
       setFolderName(handle.name)
       navigate('/', { replace: true })

@@ -7,7 +7,7 @@ theme:
 
 nodes:
   - id: owner
-    name: Business Owner
+    name: Business Owneres
     description: Manages books, sends invoices, runs payroll
     type: user
 
@@ -81,41 +81,50 @@ edges:
     to: finledger
     label: Manages finances
     style: sync
+    sourceAnchor: bottom
   - from: accountant
     to: finledger
     label: Reconciles & files taxes
     style: sync
+    sourceAnchor: bottom
   - from: employee
     to: finledger
     label: Views payslips
     style: sync
+    sourceAnchor: bottom
   - from: finledger
     to: bank
     label: Fetch transaction feeds
     technology: REST / OAuth2
     style: sync
+    sourceAnchor: left
   - from: finledger
     to: stripe
     label: Process invoice payments
     technology: HTTPS
     style: sync
+    sourceAnchor: bottom
   - from: finledger
     to: payroll-net
     label: Submit payroll & ACH
     technology: HTTPS
     style: async
+    sourceAnchor: bottom
   - from: finledger
     to: irs
     label: File tax returns
     technology: IRS MeF API
     style: async
+    sourceAnchor: bottom
   - from: finledger
     to: sendgrid
     label: Invoices, receipts, alerts
     technology: SMTP / API
     style: async
+    sourceAnchor: bottom
   - from: finledger
     to: twilio
     label: 2FA & payment reminders
     technology: REST
     style: async
+    sourceAnchor: right

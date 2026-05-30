@@ -95,6 +95,18 @@ export async function clearPositions(yamlPath: string): Promise<void> {
   await persistAllPositions()
 }
 
+// ── Raw text loader / saver (for the YAML editor) ────────────────────────────
+
+export async function loadRawText(path: string): Promise<string> {
+  if (!_dirHandle) return ''
+  try { return await readFromHandle(_dirHandle, path) } catch { return '' }
+}
+
+export async function saveRawText(path: string, text: string): Promise<void> {
+  if (!_dirHandle) return
+  await writeToHandle(_dirHandle, path, text)
+}
+
 // ── Metadata loader ───────────────────────────────────────────────────────────
 
 export async function loadMetaFile(path: string): Promise<MetaFile> {

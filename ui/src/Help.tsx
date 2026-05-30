@@ -365,6 +365,29 @@ edges:
             </p>
           </Section>
 
+          <Section title="YAML editor">
+            <p style={styles.p}>
+              Click the <strong style={{ color: '#e2e8f0' }}>&lt;/&gt;</strong> icon at the
+              top-left of the canvas to open a built-in YAML editor for the current layer.
+              The diagram stays live on the right so you can see changes as you type.
+            </p>
+            <Table
+              cols={['Behaviour', 'Detail']}
+              rows={[
+                ['Live preview',    'Diagram re-renders 350 ms after you stop typing. Invalid YAML shows an error bar at the bottom of the editor; the last valid diagram stays visible.'],
+                ['Auto-save',       'Once the YAML parses successfully it is written back to disk automatically. The editor header shows Saving… then Saved.'],
+                ['Cache clear',     'After saving, the in-memory YAML cache is cleared so navigating away and back loads the updated file.'],
+                ['Resizable pane',  'Drag the divider between the editor and the canvas to resize — minimum 200 px, maximum 900 px.'],
+                ['Tab key',         'Inserts 2 spaces instead of shifting focus.'],
+              ]}
+            />
+            <p style={{ ...styles.p, marginTop: 8 }}>
+              The folder must be opened with read-write permission — Archdom always requests{' '}
+              <Code>readwrite</Code> mode from the browser. If the browser denies write access
+              the live preview still works; only the disk write is skipped.
+            </p>
+          </Section>
+
           <Section title="URL structure & sharing">
             <Table
               cols={['URL', 'Loads']}
@@ -402,7 +425,8 @@ edges:
             <Table
               cols={['Feature', 'How to use']}
               rows={[
-                ['Open Folder',   'Click Open Folder on the landing page to pick a local folder'],
+                ['Open Folder',   'Click Open Folder on the landing page to pick a local folder (read-write access is requested so the YAML editor can save)'],
+                ['YAML editor',   'Click </> at the top-left of the canvas to open a split-pane YAML editor. Live preview + auto-save. Drag the divider to resize.'],
                 ['Resync',        'Click the ↺ Resync button in the header to reload all YAML files from disk after you edit them'],
                 ['Save layout',   'Drag any node — positions are auto-saved to archdom.positions.json at the root of your open folder. The header shows "Saving…" then "Saved".'],
                 ['Reset layout',  'Click ⊞ Reset layout in the canvas toolbar to clear the current layer\'s saved positions and return to auto-layout.'],

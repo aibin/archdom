@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react'
+import yaml from 'js-yaml'
 import ReactFlow, {
   Background,
   Controls,
@@ -17,7 +18,8 @@ import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
 import { C4NodeData, MetaFile, SelfLoop, YamlLayer, YamlEdge, DiagramType, YamlGroup } from './types'
-import { loadYaml, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
+import { loadYaml, loadRawText, saveRawText, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
+import { YamlEditor, EditorSaveStatus } from './YamlEditor'
 import { Legend } from './Legend'
 import { MetaOverlay } from './MetaOverlay'
 import { SelfLoopOverlay } from './SelfLoopOverlay'
@@ -291,6 +293,14 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   const fitViewRef = useRef(fitView)
   fitViewRef.current = fitView
 
+  const [editorOpen,       setEditorOpen]       = useState(false)
+  const [editorWidth,      setEditorWidth]      = useState(400)
+  const [editorText,       setEditorText]       = useState('')
+  const [editorError,      setEditorError]      = useState<string | null>(null)
+  const [editorSaveStatus, setEditorSaveStatus] = useState<EditorSaveStatus>('idle')
+  const parseTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resizeDragRef  = useRef<{ startX: number; startW: number } | null>(null)
+
   const nodesRef   = useRef(nodes)
   nodesRef.current = nodes
 
@@ -305,10 +315,13 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   // ── Load YAML ──────────────────────────────────────────────────────────────
   const loadAndLayout = useCallback(async (path: string, resetPos = false) => {
     try {
-      const [l, savedPos] = await Promise.all([
+      const [l, savedPos, rawText] = await Promise.all([
         loadYaml(path),
         resetPos ? Promise.resolve({} as NodePositions) : loadPositions(path),
+        loadRawText(path),
       ])
+      setEditorText(rawText)
+      setEditorError(null)
       setLayer(l)
       setError(null)
       const { nodes: ln, edges: le } = applyLayout(l, savedPos)
@@ -329,6 +342,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   useEffect(() => {
     setHighlightId(searchParamsRef.current.get('node'))
     setSearchQuery('')
+    setEditorSaveStatus('idle')
     loadAndLayout(yamlPath)
   }, [yamlPath, loadAndLayout, refreshToken])
 
@@ -347,6 +361,34 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     setSelfLoopOverlay({ loops, nodeName })
     setMetaOverlay(null)
   }, [])
+
+  // ── YAML editor live-parse + save ─────────────────────────────────────────
+  const handleEditorChange = useCallback((text: string) => {
+    setEditorText(text)
+    setEditorSaveStatus('idle')
+    if (parseTimerRef.current) clearTimeout(parseTimerRef.current)
+    parseTimerRef.current = setTimeout(async () => {
+      try {
+        const parsed = yaml.load(text) as YamlLayer
+        if (!parsed || !Array.isArray(parsed.nodes)) throw new Error('Missing required "nodes" array')
+        validateEdges(parsed.edges ?? [])
+        const savedPos = await loadPositions(yamlPath)
+        const { nodes: ln, edges: le } = applyLayout(parsed, savedPos)
+        setLayer(parsed)
+        setNodes(ln)
+        setEdges(le)
+        setEditorError(null)
+        // Persist to disk and invalidate parse cache so navigating away + back reloads fresh
+        setEditorSaveStatus('saving')
+        await saveRawText(yamlPath, text)
+        yamlCache.delete(yamlPath)
+        setEditorSaveStatus('saved')
+      } catch (e) {
+        setEditorError(String(e))
+        setEditorSaveStatus('idle')
+      }
+    }, 350)
+  }, [yamlPath, setNodes, setEdges])
 
   // ── Meta overlay ──────────────────────────────────────────────────────────
   const handleShowMeta = useCallback((metaPath: string, title: string) => {
@@ -443,6 +485,29 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     savePositions(yamlPath, pos).then(() => onLayoutSaved?.())
   }, [onNodesChange, yamlPath, onLayoutSaving, onLayoutSaved])
 
+  // ── Editor panel resize ────────────────────────────────────────────────────
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    resizeDragRef.current = { startX: e.clientX, startW: editorWidth }
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeDragRef.current) return
+      const delta = ev.clientX - resizeDragRef.current.startX
+      setEditorWidth(Math.max(200, Math.min(900, resizeDragRef.current.startW + delta)))
+    }
+    const onUp = () => {
+      resizeDragRef.current = null
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [editorWidth])
+
   // ── Reset layout ───────────────────────────────────────────────────────────
   const handleResetLayout = useCallback(async () => {
     await clearPositions(yamlPath)
@@ -504,7 +569,24 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   }, [exporting, layer])
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex' }}>
+      {editorOpen && (
+        <>
+          <div style={{ width: editorWidth, flexShrink: 0, overflow: 'hidden', display: 'flex' }}>
+            <YamlEditor
+              text={editorText}
+              error={editorError}
+              saveStatus={editorSaveStatus}
+              onChange={handleEditorChange}
+            />
+          </div>
+          <div
+            onMouseDown={handleResizeStart}
+            style={styles.resizeHandle}
+          />
+        </>
+      )}
+      <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}
@@ -524,6 +606,19 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
       {/* Diagram type badge */}
       <DiagramBadge layer={layer} />
+
+      {/* YAML editor toggle */}
+      <button
+        onClick={() => setEditorOpen(v => !v)}
+        title={editorOpen ? 'Close YAML editor' : 'Open YAML editor'}
+        style={{ ...styles.editorToggleBtn, color: editorOpen ? '#7c6af7' : '#64748b' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </button>
 
       {/* Toolbar: search + export + legend */}
       <div style={styles.toolbar}>
@@ -594,6 +689,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         <div style={styles.empty}>No nodes defined in {yamlPath}</div>
       )}
       {error && <pre style={styles.error}>{error}</pre>}
+      </div> {/* end canvas pane */}
     </div>
   )
 }
@@ -611,6 +707,21 @@ export type { Props as DiagramViewProps }
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
+  resizeHandle: {
+    width: 4,
+    flexShrink: 0,
+    cursor: 'col-resize',
+    background: '#2d3148',
+    transition: 'background 0.15s',
+    zIndex: 5,
+  },
+  editorToggleBtn: {
+    position: 'absolute', top: 12, left: 12, zIndex: 5,
+    background: 'rgba(26,29,39,0.9)', backdropFilter: 'blur(4px)',
+    border: '1px solid #2d3148', borderRadius: 8,
+    padding: '5px 8px', cursor: 'pointer',
+    display: 'flex', alignItems: 'center',
+  },
   toolbar: {
     position: 'absolute', top: 12, right: 12,
     display: 'flex', alignItems: 'center', gap: 6, zIndex: 5,

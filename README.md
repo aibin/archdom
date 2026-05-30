@@ -23,6 +23,7 @@ Archdom lets you describe your software architecture in plain YAML files and ren
 - **Deployment diagrams** — infrastructure nodes, deployment environments
 - **Shareable URLs** — every diagram layer has its own route (`/platform/orders`)
 - **Highlight mode** — click a node to dim everything except its connections
+- **YAML editor** — built-in split-pane editor; live-parse updates the diagram in real-time, auto-saves valid changes back to disk
 - **Search** — type to filter nodes by name or description
 - **PNG export** — download the current view as an image
 - **Legend panel** — toggle a key showing all shapes and edge styles
@@ -369,6 +370,20 @@ nodes:
 
 ---
 
+## YAML editor
+
+Click the **`</>`** icon at the top-left of the canvas to open a built-in YAML editor for the current layer. The canvas stays visible on the right so you can see changes immediately.
+
+- **Live preview** — the diagram re-renders 350 ms after you stop typing. If the YAML is invalid the error appears in the editor's red bar at the bottom; the diagram stays on the last valid state.
+- **Auto-save** — once the YAML is valid, Archdom writes it back to the file on disk automatically. The editor header shows **Saving…** then **Saved** using the same muted indicator as layout positions.
+- **Cache invalidation** — after saving, the in-memory YAML cache is cleared for that path so navigating away and back loads the new file.
+- **Resizable pane** — drag the divider between the editor and the canvas to any width between 200 px and 900 px.
+- **Tab key** — inserts two spaces instead of shifting focus.
+
+> The folder must be opened with read-write permission (Archdom always requests `readwrite` mode from the browser). If the browser denies write access the diagram still updates live; only the disk write is skipped.
+
+---
+
 ## Persisting custom layouts
 
 Drag any node to rearrange a diagram. Archdom saves positions automatically the moment you release — no button needed. The header shows **Saving…** while writing, then **Saved** once done.
@@ -407,6 +422,9 @@ Every diagram layer is a real URL. Copy the browser address bar to share a direc
 | Open metadata overlay | Click the ⓘ button on any node with `meta:` set; or click an edge with `meta:` set |
 | Open self-loop overlay | Click the ↺ icon on any node that has self-loop edges |
 | Close overlays | Click ✕ in the overlay, or click the canvas background |
+| Open YAML editor | Click the `</>` icon at the top-left of the canvas — opens a split-pane editor for the current layer |
+| Resize editor pane | Drag the divider between the editor and the canvas left or right (200 px – 900 px) |
+| Tab in editor | Inserts 2 spaces |
 | Save layout | Drag any node — positions auto-save to `archdom.positions.json` at the folder root. Header shows **Saving…** then **Saved**. |
 | Reset layout | Click **⊞ Reset layout** in the canvas toolbar to revert the current layer to auto-layout |
 | Search / filter | Type in the search box (top-right) — non-matching nodes dim to 12% opacity |
