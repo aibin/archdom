@@ -384,6 +384,24 @@ Click the **`</>`** icon at the top-left of the canvas to open a built-in YAML e
 
 ---
 
+## Visual edit mode
+
+Click **✏ Edit** in the canvas toolbar to enter edit mode. Drill-down clicks are disabled while editing. All changes are written to disk immediately.
+
+| Action | Result |
+|---|---|
+| Drag node icon from palette | A node palette appears at the bottom of the canvas. Drag any icon onto the canvas to open the **Add Node** form. |
+| Add Node form | Enter name, ID (auto-derived), type, technology, description, external flag, link. Optionally enable **drill-down** — a blank sub-diagram YAML is created automatically if the file doesn't exist. |
+| Double-click a node | Opens the **Edit Node** form pre-filled. Save to write changes to disk. |
+| × button on node | Deletes the node and all its connected edges from the YAML. |
+| Backspace | Deletes selected nodes or edges. |
+| Drag handle → node | Opens the **Add Edge** form. Pick style (sync / async / event / webhook / depends), label, technology, bidirectional, and step number. |
+| Click an edge | Opens the **Edit Edge** form. Includes a Delete button. |
+
+Click **✏ Editing** again to leave edit mode and return to read/navigate mode.
+
+---
+
 ## Persisting custom layouts
 
 Drag any node to rearrange a diagram. Archdom saves positions automatically the moment you release — no button needed. The header shows **Saving…** while writing, then **Saved** once done.
@@ -399,7 +417,7 @@ All layer positions live in a single **`archdom.positions.json`** file at the ro
 ```
 
 - New nodes added to a YAML after a save fall back to auto-layout; existing positions are preserved.
-- Click **⊞ Reset layout** in the canvas toolbar to discard saved positions for the current layer.
+- Click **⊞ Reset** in the canvas toolbar to discard saved positions for the current layer.
 - Commit `archdom.positions.json` to share custom layouts with your team, or add it to `.gitignore` to keep layouts local.
 
 ---
@@ -422,15 +440,16 @@ Every diagram layer is a real URL. Copy the browser address bar to share a direc
 | Open metadata overlay | Click the ⓘ button on any node with `meta:` set; or click an edge with `meta:` set |
 | Open self-loop overlay | Click the ↺ icon on any node that has self-loop edges |
 | Close overlays | Click ✕ in the overlay, or click the canvas background |
+| Enter edit mode | Click **✏ Edit** in the toolbar — drag nodes from palette, connect handles, double-click to edit, Backspace to delete |
 | Open YAML editor | Click the `</>` icon at the top-left of the canvas — opens a split-pane editor for the current layer |
 | Resize editor pane | Drag the divider between the editor and the canvas left or right (200 px – 900 px) |
 | Tab in editor | Inserts 2 spaces |
 | Save layout | Drag any node — positions auto-save to `archdom.positions.json` at the folder root. Header shows **Saving…** then **Saved**. |
-| Reset layout | Click **⊞ Reset layout** in the canvas toolbar to revert the current layer to auto-layout |
+| Reset layout | Click **⊞ Reset** in the canvas toolbar to revert the current layer to auto-layout |
 | Search / filter | Type in the search box (top-right) — non-matching nodes dim to 12% opacity |
 | Legend | Click **☰ Legend** to see all node shapes and edge styles |
 | Export PNG | Click **⬇ PNG** — fits the view then downloads as `<diagram-name>.png` |
-| Diagram badge | Top-centre overlay showing type, scope, and environment |
+| Diagram info | Top-left shows diagram name, type badge, scope, and environment |
 | Breadcrumb | Click any ancestor in the header to jump back to that layer |
 | Minimap | Bottom-right — drag the viewport rectangle to pan quickly |
 | Help page | Click **? Help** in the toolbar or navigate to `/help` |

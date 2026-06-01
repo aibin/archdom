@@ -354,7 +354,7 @@ edges:
 }`}</Pre>
             <p style={{ ...styles.p, marginTop: 8 }}>
               New nodes added to a YAML after a save fall back to auto-layout; existing saved nodes
-              keep their positions. Click <strong style={{ color: '#e2e8f0' }}>⊞ Reset layout</strong> in
+              keep their positions. Click <strong style={{ color: '#e2e8f0' }}>⊞ Reset</strong> in
               the toolbar to discard saved positions for the current layer and revert to dagre
               auto-layout.
             </p>
@@ -386,6 +386,28 @@ edges:
               <Code>readwrite</Code> mode from the browser. If the browser denies write access
               the live preview still works; only the disk write is skipped.
             </p>
+          </Section>
+
+          <Section title="Visual edit mode">
+            <p style={styles.p}>
+              Click <strong style={{ color: '#e2e8f0' }}>✏ Edit</strong> in the canvas toolbar
+              to enter edit mode. In this mode, drill-down clicks are disabled so you can
+              interact with nodes directly. Click <strong style={{ color: '#10b981' }}>✏ Editing</strong> again
+              to leave edit mode. All changes are written to disk immediately — no separate save step.
+            </p>
+            <Table
+              cols={['Action', 'What happens']}
+              rows={[
+                ['Drag node from palette',   'A node-type palette appears at the bottom of the canvas. Drag any icon onto the canvas to open the Add Node form.'],
+                ['Add Node form',            'Fill in name, ID (auto-derived), type, technology, description, external flag, link URL. Optionally enable drill-down — a blank sub-diagram YAML is created automatically if the file does not exist.'],
+                ['Double-click a node',      'Opens the Edit Node form pre-filled with the node\'s current values. Save to write changes to disk.'],
+                ['Delete node (×)',          'Click the × button on any node to remove it and all its connected edges from the YAML.'],
+                ['Delete (keyboard)',        'Select one or more nodes/edges and press Backspace to remove them.'],
+                ['Drag from handle to node', 'Drag from any directional handle (top / bottom / left / right) to another node to open the Add Edge form.'],
+                ['Add / Edit Edge form',     'Set style (sync / async / event / webhook / depends), label, technology, bidirectional toggle, and optional step number.'],
+                ['Click an edge',            'Opens the Edit Edge form for that connection. Includes a Delete button to remove the edge.'],
+              ]}
+            />
           </Section>
 
           <Section title="URL structure & sharing">
@@ -426,15 +448,16 @@ edges:
               cols={['Feature', 'How to use']}
               rows={[
                 ['Open Folder',   'Click Open Folder on the landing page to pick a local folder (read-write access is requested so the YAML editor can save)'],
+                ['Edit mode',     'Click ✏ Edit in the toolbar to enter visual edit mode — drag nodes from the palette, connect handles to create edges, double-click to edit, Backspace to delete.'],
                 ['YAML editor',   'Click </> at the top-left of the canvas to open a split-pane YAML editor. Live preview + auto-save. Drag the divider to resize.'],
                 ['Resync',        'Click the ↺ Resync button in the header to reload all YAML files from disk after you edit them'],
                 ['Save layout',   'Drag any node — positions are auto-saved to archdom.positions.json at the root of your open folder. The header shows "Saving…" then "Saved".'],
-                ['Reset layout',  'Click ⊞ Reset layout in the canvas toolbar to clear the current layer\'s saved positions and return to auto-layout.'],
+                ['Reset layout',  'Click ⊞ Reset in the canvas toolbar to clear the current layer\'s saved positions and return to auto-layout.'],
                 ['Close Folder',  'Click × next to the folder badge in the header to close the current folder'],
                 ['Search nodes',  'Type in the search box (top-right) — non-matching nodes dim'],
                 ['Legend',        'Click ☰ Legend to see all shapes and edge styles'],
                 ['Export PNG',    'Click ⬇ PNG to download the current view as an image'],
-                ['Diagram badge', 'Top-centre shows diagram type, scope, and environment'],
+                ['Diagram info',  'Top-left shows diagram name, type badge, scope, and environment'],
                 ['Breadcrumb',    'Click any crumb in the header to jump back to that layer'],
                 ['Minimap',       'Bottom-right — drag the viewport rectangle to pan'],
               ]}

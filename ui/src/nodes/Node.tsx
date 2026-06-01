@@ -93,13 +93,7 @@ export const icons: Record<string, React.ReactNode> = {
   ),
   'deployment-node': (
     <Ic>
-      <rect x="2" y="2" width="20" height="8" rx="2" />
-      <rect x="2" y="14" width="20" height="8" rx="2" />
-      <circle cx="19" cy="6" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="18" r="1.5" fill="currentColor" stroke="none" />
-      <line x1="5" y1="6" x2="14" y2="6" />
-      <line x1="5" y1="18" x2="14" y2="18" />
-      <line x1="12" y1="10" x2="12" y2="14" strokeDasharray="2 2" />
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z" />
     </Ic>
   ),
   'infrastructure-node': (
@@ -155,20 +149,13 @@ function Handles({ topOffset, bottomOffset }: { topOffset?: number; bottomOffset
   const ts = (extra?: object) => ({ ...sh.handle, ...extra }) as React.CSSProperties
   return (
     <>
-      {/* top */}
-      <Handle type="target" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
-      <Handle type="source" id="top" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
-      <Handle type="target" id="top" position={Position.Top} style={ts(topOffset != null ? { top: topOffset } : {})} />
-      {/* left */}
-      <Handle type="source" id="left" position={Position.Left} style={ts()} />
-      <Handle type="target" id="left" position={Position.Left} style={ts()} />
-      {/* right */}
-      <Handle type="source" id="right" position={Position.Right} style={ts()} />
-      <Handle type="target" id="right" position={Position.Right} style={ts()} />
-      {/* bottom */}
-      <Handle type="source" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
-      <Handle type="source" id="bottom" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
-      <Handle type="target" id="bottom" position={Position.Bottom} style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
+      {/* All handles are type="source" so dragging always starts from the source side.
+          ConnectionMode.Loose on the ReactFlow canvas lets these handles act as targets
+          when receiving a connection, so edge routing works correctly in both directions. */}
+      <Handle type="source" position={Position.Top}    id="top"    style={ts(topOffset    != null ? { top:    topOffset    } : {})} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={ts(bottomOffset != null ? { bottom: bottomOffset } : {})} />
+      <Handle type="source" position={Position.Left}   id="left"   style={ts()} />
+      <Handle type="source" position={Position.Right}  id="right"  style={ts()} />
     </>
   )
 }
@@ -400,7 +387,7 @@ export const FolderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
           <LinkBtn link={data.link} />
           <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
           <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
-        </div>
+          </div>
         <div style={sh.name}>{data.name}</div>
         {data.technology && <div style={sh.tech}>[{data.technology}]</div>}
         {data.description && <div style={sh.desc}>{data.description}</div>}

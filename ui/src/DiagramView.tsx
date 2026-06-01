@@ -12,18 +12,23 @@ import ReactFlow, {
   Edge,
   NodeChange,
   NodeMouseHandler,
+  Connection,
+  ConnectionMode,
 } from 'reactflow'
 import { toPng } from 'html-to-image'
 import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
-import { C4NodeData, MetaFile, SelfLoop, YamlLayer, YamlEdge, DiagramType, YamlGroup } from './types'
-import { loadYaml, loadRawText, saveRawText, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
+import { C4NodeData, MetaFile, SelfLoop, YamlLayer, YamlEdge, YamlNode, DiagramType, YamlGroup } from './types'
+import { loadYaml, loadRawText, saveRawText, saveYamlLayer, createDiagramIfMissing, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
 import { YamlEditor, EditorSaveStatus } from './YamlEditor'
 import { Legend } from './Legend'
 import { MetaOverlay } from './MetaOverlay'
 import { SelfLoopOverlay } from './SelfLoopOverlay'
 import { edgeAppearance, edgeLabel } from './diagramUtils'
+import { NodePalette } from './NodePalette'
+import { NodeForm } from './NodeForm'
+import { EdgeForm } from './EdgeForm'
 
 // ── Diagram type badge ────────────────────────────────────────────────────────
 
@@ -37,32 +42,43 @@ const DIAGRAM_META: Record<string, { level: string; color: string }> = {
   deployment: { level: 'Deployment Diagram',     color: '#1d4ed8' },
 }
 
-function DiagramBadge({ layer }: { layer: YamlLayer | null }) {
-  if (!layer?.diagramType) return null
-  const meta = DIAGRAM_META[layer.diagramType as DiagramType]
-  if (!meta) return null
+function DiagramInfo({ layer }: { layer: YamlLayer | null }) {
+  if (!layer) return null
+  const meta = layer.diagramType ? DIAGRAM_META[layer.diagramType as DiagramType] : null
   return (
     <div style={{
-      position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-      pointerEvents: 'none', zIndex: 5,
+      position: 'absolute', top: 44, left: 12, zIndex: 5,
+      pointerEvents: 'none',
+      display: 'flex', flexDirection: 'column', gap: 3,
     }}>
-      <div style={{
-        background: meta.color, color: '#fff',
-        fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
-        padding: '3px 12px', borderRadius: 20,
-      }}>
-        {meta.level}
-      </div>
-      {(layer.scope || layer.environment) && (
+      {layer.name && (
         <div style={{
-          background: 'rgba(26,29,39,0.85)', backdropFilter: 'blur(4px)',
-          color: '#94a3b8', fontSize: 11,
-          padding: '2px 10px', borderRadius: 12,
+          fontSize: 13, fontWeight: 700, color: '#e2e8f0',
+          maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {[layer.scope, layer.environment].filter(Boolean).join(' · ')}
+          {layer.name}
         </div>
       )}
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        {meta && (
+          <div style={{
+            background: meta.color, color: '#fff',
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+            padding: '2px 8px', borderRadius: 20,
+          }}>
+            {meta.level}
+          </div>
+        )}
+        {(layer.scope || layer.environment) && (
+          <div style={{
+            background: 'rgba(26,29,39,0.88)', backdropFilter: 'blur(4px)',
+            color: '#64748b', fontSize: 10,
+            padding: '2px 8px', borderRadius: 20,
+          }}>
+            {[layer.scope, layer.environment].filter(Boolean).join(' · ')}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -250,7 +266,7 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
       label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),
       ...(e.sourceAnchor && { sourceHandle: srcHandle(e.sourceAnchor) }),
       ...(e.targetAnchor && { targetHandle: tgtHandle(e.targetAnchor) }),
-      data: { meta: e.meta },
+      data: { meta: e.meta, yamlFrom: e.from, yamlTo: e.to },
     }))
 
   return { nodes: flowNodes, edges }
@@ -288,8 +304,15 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   type SelfLoopState = { loops: SelfLoop[]; nodeName: string }
   const [selfLoopOverlay, setSelfLoopOverlay] = useState<SelfLoopState | null>(null)
 
+  // ── Edit mode state ────────────────────────────────────────────────────────
+  const [editMode, setEditMode]         = useState(false)
+  const [pendingEdge, setPendingEdge]   = useState<{ source: string; target: string; sourceHandle: string | null; targetHandle: string | null } | null>(null)
+  const [pendingNode, setPendingNode]   = useState<{ position: { x: number; y: number }; nodeType: string } | null>(null)
+  const [editingNode, setEditingNode]   = useState<YamlNode | null>(null)
+  const [editingEdge, setEditingEdge]   = useState<{ from: string; to: string } | null>(null)
+
   const containerRef = useRef<HTMLDivElement>(null)
-  const { fitView, setViewport } = useReactFlow()
+  const { fitView, setViewport, project } = useReactFlow()
   const fitViewRef = useRef(fitView)
   fitViewRef.current = fitView
 
@@ -397,6 +420,30 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       .then(data => setMetaOverlay(prev => prev?.path === metaPath ? { ...prev, loading: false, data } : prev))
       .catch(err => setMetaOverlay(prev => prev?.path === metaPath ? { ...prev, loading: false, error: String(err) } : prev))
   }, [])
+
+  // ── YAML sync helper ──────────────────────────────────────────────────────
+  const syncYaml = useCallback(async (newLayer: YamlLayer) => {
+    const text = yaml.dump(newLayer, { lineWidth: -1, noRefs: true })
+    setEditorText(text)
+    await saveYamlLayer(yamlPath, newLayer)
+  }, [yamlPath])
+
+  // ── Edit mode: delete node via × button ───────────────────────────────────
+  const handleDeleteNode = useCallback(async (nodeId: string) => {
+    if (!layer) return
+    const newLayer: YamlLayer = {
+      ...layer,
+      nodes: layer.nodes.filter(n => n.id !== nodeId),
+      edges: (layer.edges ?? []).filter(e => e.from !== nodeId && e.to !== nodeId),
+    }
+    setNodes(prev => prev.filter(n => n.id !== nodeId))
+    setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId))
+    const pos: NodePositions = {}
+    nodesRef.current.filter(n => n.type !== 'group' && n.id !== nodeId).forEach(n => { pos[n.id] = n.position })
+    await savePositions(yamlPath, pos)
+    setLayer(newLayer)
+    await syncYaml(newLayer)
+  }, [layer, yamlPath, setNodes, setEdges, syncYaml])
 
   // ── Display nodes/edges: highlight + search + inject callbacks ─────────────
   const [displayNodes, displayEdges] = useMemo(() => {
@@ -530,19 +577,195 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
   // ── Click handlers ─────────────────────────────────────────────────────────
   const handleNodeClick: NodeMouseHandler = useCallback((_e, node) => {
+    if (editMode) return
     if (node.data.file) {
       setHighlightId(null)
       onDrillIn(node.data.file, node.data.name)
     }
-  }, [onDrillIn])
+  }, [onDrillIn, editMode])
 
   const handleEdgeClick = useCallback((_e: React.MouseEvent, edge: Edge) => {
+    if (editMode) {
+      const d = (edge.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
+      if (d.yamlFrom && d.yamlTo) setEditingEdge({ from: d.yamlFrom, to: d.yamlTo })
+      return
+    }
     setSelectedEdgeId(prev => prev === edge.id ? null : edge.id)
     if (edge.data?.meta) {
       const title = (typeof edge.label === 'string' ? edge.label : undefined) ?? `${edge.source} → ${edge.target}`
       handleShowMeta(edge.data.meta as string, title)
     }
-  }, [handleShowMeta])
+  }, [editMode, handleShowMeta])
+
+
+  // ── Edit mode: connect two nodes → edge form ───────────────────────────────
+  const handleConnect = useCallback((connection: Connection) => {
+    if (!editMode || !connection.source || !connection.target) return
+    if (connection.source === connection.target) return
+    setPendingEdge({ source: connection.source, target: connection.target, sourceHandle: connection.sourceHandle ?? null, targetHandle: connection.targetHandle ?? null })
+  }, [editMode])
+
+  // ── Edit mode: drag node from palette → canvas ─────────────────────────────
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!editMode) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [editMode])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (!editMode) return
+    e.preventDefault()
+    const nodeType = e.dataTransfer.getData('application/archdom-nodetype')
+    if (!nodeType) return
+    const rfBounds = containerRef.current?.querySelector('.react-flow')?.getBoundingClientRect()
+    if (!rfBounds) return
+    const position = project({ x: e.clientX - rfBounds.left, y: e.clientY - rfBounds.top })
+    setPendingNode({ position, nodeType })
+  }, [editMode, project])
+
+  // ── Edit mode: double-click node → node form ───────────────────────────────
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback((_e, node) => {
+    if (!editMode || !layer || node.type === 'group') return
+    const yn = layer.nodes.find(n => n.id === node.id)
+    if (yn) setEditingNode(yn)
+  }, [editMode, layer])
+
+  // ── Edit mode: save node (create or update) ────────────────────────────────
+  const handleNodeFormSave = useCallback(async (nodeData: YamlNode, createSubDiagram?: { file: string; diagramType: string }) => {
+    if (!layer) return
+    let newLayer: YamlLayer
+
+    if (editingNode) {
+      newLayer = { ...layer, nodes: layer.nodes.map(n => n.id === editingNode.id ? nodeData : n) }
+      setNodes(prev => prev.map(n => {
+        if (n.id !== editingNode.id) return n
+        return {
+          ...n, type: getFlowType(nodeData.type ?? 'server-app'),
+          data: { ...n.data, name: nodeData.name, description: nodeData.description ?? '', technology: nodeData.technology ?? '', external: nodeData.external, link: nodeData.link, file: nodeData.file, nodeType: nodeData.type ?? 'server-app' },
+        }
+      }))
+      setEditingNode(null)
+    } else if (pendingNode) {
+      if (layer.nodes.some(n => n.id === nodeData.id)) return
+      newLayer = { ...layer, nodes: [...layer.nodes, nodeData] }
+      const nodeType = nodeData.type ?? 'server-app'
+      const { w, h } = getNodeSize(nodeType)
+      const newFlowNode: Node<C4NodeData> = {
+        id: nodeData.id, type: getFlowType(nodeType),
+        position: pendingNode.position, width: w, height: h, zIndex: 1,
+        data: {
+          name: nodeData.name, description: nodeData.description ?? '',
+          technology: nodeData.technology ?? '', nodeType,
+          external: nodeData.external, link: nodeData.link, file: nodeData.file, meta: nodeData.meta,
+          theme: layer.theme,
+        },
+      }
+      setNodes(prev => [...prev, newFlowNode])
+      // Persist drop position
+      const pos: NodePositions = {}
+      nodesRef.current.filter(n => n.type !== 'group').forEach(n => { pos[n.id] = n.position })
+      pos[nodeData.id] = pendingNode.position
+      await savePositions(yamlPath, pos)
+      setPendingNode(null)
+    } else {
+      return
+    }
+    setLayer(newLayer!)
+    await syncYaml(newLayer!)
+    if (createSubDiagram) {
+      await createDiagramIfMissing(createSubDiagram.file, nodeData.name, createSubDiagram.diagramType)
+    }
+  }, [editingNode, pendingNode, layer, yamlPath, setNodes, syncYaml])
+
+  // ── Edit mode: save edge (create or update) ────────────────────────────────
+  const handleEdgeFormSave = useCallback(async (edgeProps: Partial<YamlEdge>) => {
+    if (!layer) return
+    let newLayer: YamlLayer
+
+    if (editingEdge) {
+      newLayer = {
+        ...layer,
+        edges: (layer.edges ?? []).map(e =>
+          e.from === editingEdge.from && e.to === editingEdge.to
+            ? { from: e.from, to: e.to, ...edgeProps } as YamlEdge
+            : e
+        ),
+      }
+      setEdges(prev => prev.map(e => {
+        const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
+        if (d.yamlFrom !== editingEdge.from || d.yamlTo !== editingEdge.to) return e
+        const ye: YamlEdge = { from: editingEdge.from, to: editingEdge.to, ...edgeProps }
+        return { ...e, label: edgeLabel(ye), ...edgeAppearance(ye.style, ye.bidirectional ?? false), data: { ...d, meta: ye.meta } }
+      }))
+      setEditingEdge(null)
+    } else if (pendingEdge) {
+      const { source, target, sourceHandle, targetHandle } = pendingEdge
+      const anchorProps: Partial<YamlEdge> = {
+        ...(sourceHandle && { sourceAnchor: sourceHandle as YamlEdge['sourceAnchor'] }),
+        ...(targetHandle && { targetAnchor: targetHandle as YamlEdge['targetAnchor'] }),
+      }
+      const newYamlEdge: YamlEdge = { from: source, to: target, ...anchorProps, ...edgeProps }
+      newLayer = { ...layer, edges: [...(layer.edges ?? []), newYamlEdge] }
+      const newFlowEdge: Edge = {
+        id: `e-${Date.now()}`,
+        source: newYamlEdge.from, target: newYamlEdge.to,
+        label: edgeLabel(newYamlEdge),
+        ...edgeAppearance(newYamlEdge.style, newYamlEdge.bidirectional ?? false),
+        ...(sourceHandle && { sourceHandle }),
+        ...(targetHandle && { targetHandle }),
+        data: { meta: newYamlEdge.meta, yamlFrom: newYamlEdge.from, yamlTo: newYamlEdge.to },
+      }
+      setEdges(prev => [...prev, newFlowEdge])
+      setPendingEdge(null)
+    } else {
+      return
+    }
+    setLayer(newLayer!)
+    await syncYaml(newLayer!)
+  }, [editingEdge, pendingEdge, layer, setEdges, syncYaml])
+
+  // ── Edit mode: delete edge via form ───────────────────────────────────────
+  const handleEdgeFormDelete = useCallback(async () => {
+    if (!editingEdge || !layer) return
+    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => !(e.from === editingEdge.from && e.to === editingEdge.to)) }
+    setEdges(prev => prev.filter(e => {
+      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
+      return !(d.yamlFrom === editingEdge.from && d.yamlTo === editingEdge.to)
+    }))
+    setLayer(newLayer)
+    setEditingEdge(null)
+    await syncYaml(newLayer)
+  }, [editingEdge, layer, setEdges, syncYaml])
+
+  // ── Edit mode: delete nodes via keyboard ──────────────────────────────────
+  const handleNodesDelete = useCallback(async (deleted: Node[]) => {
+    if (!layer) return
+    const deletedIds = new Set(deleted.filter(n => n.type !== 'group').map(n => n.id))
+    if (!deletedIds.size) return
+    const newLayer: YamlLayer = {
+      ...layer,
+      nodes: layer.nodes.filter(n => !deletedIds.has(n.id)),
+      edges: (layer.edges ?? []).filter(e => !deletedIds.has(e.from) && !deletedIds.has(e.to)),
+    }
+    const pos: NodePositions = {}
+    nodesRef.current.filter(n => n.type !== 'group' && !deletedIds.has(n.id)).forEach(n => { pos[n.id] = n.position })
+    await savePositions(yamlPath, pos)
+    setLayer(newLayer)
+    await syncYaml(newLayer)
+  }, [layer, yamlPath, syncYaml])
+
+  // ── Edit mode: delete edges via keyboard ──────────────────────────────────
+  const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
+    if (!layer) return
+    const deletedPairs = new Set(deleted.map(e => {
+      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
+      return d.yamlFrom && d.yamlTo ? `${d.yamlFrom}→${d.yamlTo}` : ''
+    }).filter(Boolean))
+    if (!deletedPairs.size) return
+    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => !deletedPairs.has(`${e.from}→${e.to}`)) }
+    setLayer(newLayer)
+    await syncYaml(newLayer)
+  }, [layer, syncYaml])
 
   const handlePaneClick = useCallback(() => {
     setHighlightId(null)
@@ -595,7 +818,16 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
+        onConnect={handleConnect}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onNodesDelete={handleNodesDelete}
+        onEdgesDelete={handleEdgesDelete}
+        deleteKeyCode={editMode ? 'Backspace' : null}
         nodeTypes={nodeTypes}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={40}
         minZoom={0.1}
         proOptions={{ hideAttribution: true }}
       >
@@ -604,8 +836,8 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         <MiniMap style={{ background: '#1a1d27', borderColor: '#2d3148' }} nodeColor="#4f46e5" maskColor="rgba(15,17,23,0.7)" />
       </ReactFlow>
 
-      {/* Diagram type badge */}
-      <DiagramBadge layer={layer} />
+      {/* Diagram name + type below the YAML toggle */}
+      <DiagramInfo layer={layer} />
 
       {/* YAML editor toggle */}
       <button
@@ -630,11 +862,18 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
           style={styles.search}
         />
         <button
+          onClick={() => setEditMode(v => !v)}
+          title={editMode ? 'Exit edit mode' : 'Enter edit mode — drag nodes, connect edges'}
+          style={{ ...styles.iconBtn, color: editMode ? '#10b981' : '#94a3b8', borderColor: editMode ? '#10b981' : '#2d3148' }}
+        >
+          {editMode ? '✏ Editing' : '✏ Edit'}
+        </button>
+        <button
           onClick={handleResetLayout}
           title="Reset to auto-layout (clears saved positions)"
           style={styles.iconBtn}
         >
-          ⊞ Reset layout
+          ⊞ Reset
         </button>
         <button
           onClick={handleExport}
@@ -682,8 +921,38 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
       {/* Keyboard hint */}
       <div style={styles.hint}>
-        click to open · 👁 to highlight connections · ⎋ go back
+        {editMode
+          ? 'drag from palette · connect handles · click edge to edit · Backspace to delete'
+          : 'click to open · 👁 to highlight connections · ⎋ go back'}
       </div>
+
+      {/* Edit mode: node palette */}
+      {editMode && <NodePalette />}
+
+      {/* Edit mode: node create/edit form */}
+      {(pendingNode || editingNode) && layer && (
+        <NodeForm
+          initialType={pendingNode?.nodeType}
+          initialData={editingNode ?? undefined}
+          existingIds={layer.nodes.map(n => n.id)}
+          currentYamlPath={yamlPath}
+          onSave={handleNodeFormSave}
+          onDelete={editingNode ? () => { handleDeleteNode(editingNode.id); setEditingNode(null) } : undefined}
+          onCancel={() => { setPendingNode(null); setEditingNode(null) }}
+        />
+      )}
+
+      {/* Edit mode: edge create/edit form */}
+      {(pendingEdge || editingEdge) && (
+        <EdgeForm
+          source={pendingEdge?.source ?? editingEdge?.from ?? ''}
+          target={pendingEdge?.target ?? editingEdge?.to ?? ''}
+          initialData={editingEdge ? (layer?.edges ?? []).find(e => e.from === editingEdge.from && e.to === editingEdge.to) : undefined}
+          onSave={handleEdgeFormSave}
+          onCancel={() => { setPendingEdge(null); setEditingEdge(null) }}
+          onDelete={editingEdge ? handleEdgeFormDelete : undefined}
+        />
+      )}
 
       {nodes.length === 0 && !error && (
         <div style={styles.empty}>No nodes defined in {yamlPath}</div>
