@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { YamlNode } from './types'
 import { DiagramType } from './types'
+import { MetaSection, MetaSectionState, initialMetaState, applyMetaFile, collectMeta } from './MetaSection'
+import { loadMetaFile, saveMetaFile } from './yamlLoader'
 
 const DIAGRAM_TYPES: DiagramType[] = ['container', 'component', 'context', 'dynamic', 'deployment', 'landscape']
 
@@ -23,6 +25,10 @@ function toId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
+function yamlDir(yamlPath: string): string {
+  return yamlPath.includes('/') ? yamlPath.slice(0, yamlPath.lastIndexOf('/') + 1) : ''
+}
+
 export function NodeForm({ initialType, initialData, existingIds, currentYamlPath, onSave, onDelete, onCancel }: Props) {
   const isEditing = !!initialData
 
@@ -39,26 +45,45 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
   const [subDiagramType, setSubType]  = useState<DiagramType>('container')
   const [filePathTouched, setFileTouched] = useState(!!initialData?.file)
 
+  const [meta, setMeta]           = useState<MetaSectionState>(initialMetaState(initialData?.meta))
+  const [metaLoading, setMetaLoading] = useState(false)
+  const [metaPathTouched, setMetaPathTouched] = useState(!!initialData?.meta)
+
   useEffect(() => {
     if (!idTouched) setId(toId(name))
   }, [name, idTouched])
 
-  // Auto-suggest file path based on node id, scoped to the current diagram's folder
   useEffect(() => {
     if (drilldown && !filePathTouched && id) {
-      const folder = currentYamlPath.includes('/')
-        ? currentYamlPath.slice(0, currentYamlPath.lastIndexOf('/') + 1)
-        : ''
-      setFilePath(`${folder}${id}.yaml`)
+      setFilePath(`${yamlDir(currentYamlPath)}${id}.yaml`)
     }
   }, [drilldown, id, filePathTouched, currentYamlPath])
+
+  // Auto-suggest meta path from node id
+  useEffect(() => {
+    if (meta.enabled && !metaPathTouched && id) {
+      setMeta(s => ({ ...s, filePath: `${yamlDir(currentYamlPath)}meta/${id}.yaml` }))
+    }
+  }, [meta.enabled, id, metaPathTouched, currentYamlPath])
+
+  // Load existing meta file content when editing
+  useEffect(() => {
+    if (!initialData?.meta) return
+    setMetaLoading(true)
+    loadMetaFile(initialData.meta)
+      .then(data => setMeta(s => applyMetaFile(s, data)))
+      .catch(() => {})
+      .finally(() => setMetaLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const idConflict = !isEditing && id !== '' && existingIds.includes(id)
   const canSave    = name.trim() !== '' && id.trim() !== '' && !idConflict
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSave) return
+    const metaResult = collectMeta(meta)
+    if (metaResult) await saveMetaFile(metaResult.path, metaResult.content)
     const node: YamlNode = {
       id: id.trim(),
       name: name.trim(),
@@ -68,6 +93,7 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
       ...(external            && { external: true }),
       ...(link.trim()         && { link: link.trim() }),
       ...(drilldown && filePath.trim() && { file: filePath.trim() }),
+      ...(metaResult          && { meta: metaResult.path }),
     }
     const subDiagram = drilldown && filePath.trim() && !initialData?.file
       ? { file: filePath.trim(), diagramType: subDiagramType }
@@ -156,6 +182,16 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
           )}
         </div>
 
+        {/* Metadata section */}
+        <MetaSection
+          state={meta}
+          loading={metaLoading}
+          onChange={s => {
+            if (s.filePath !== meta.filePath) setMetaPathTouched(true)
+            setMeta(s)
+          }}
+        />
+
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginTop: 4 }}>
           <div>
             {isEditing && onDelete && (
@@ -196,7 +232,7 @@ function Field({ label, children, error }: { label: string; children: React.Reac
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: '#1a1d27', border: '1px solid #2d3148', borderRadius: 12,
-    padding: 24, width: 400, maxWidth: '90vw',
+    padding: 24, width: 400, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto',
     display: 'flex', flexDirection: 'column', gap: 14,
   },
   title: { margin: 0, fontSize: 16, color: '#e2e8f0', fontWeight: 600 },

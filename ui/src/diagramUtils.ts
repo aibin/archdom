@@ -26,34 +26,36 @@ export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partia
     }
   }
 
+  // markerStart must be explicitly undefined so spreading this result onto an
+  // existing edge object clears any previous bidirectional arrowhead.
   switch (style) {
     case 'async':
       return {
-        ...LABEL_STYLE,
+        ...LABEL_STYLE, markerStart: undefined,
         style: { stroke: '#64748b', strokeWidth: 1.5, strokeDasharray: '8 4' },
         markerEnd: marker('#64748b'),
       }
     case 'event':
       return {
-        ...LABEL_STYLE, animated: true,
+        ...LABEL_STYLE, animated: true, markerStart: undefined,
         style: { stroke: '#7c6af7', strokeWidth: 1.5 },
         markerEnd: marker('#7c6af7'),
       }
     case 'webhook':
       return {
-        ...LABEL_STYLE, animated: true,
+        ...LABEL_STYLE, animated: true, markerStart: undefined,
         style: { stroke: '#f97316', strokeWidth: 1.5, strokeDasharray: '6 3' },
         markerEnd: marker('#f97316'),
       }
     case 'depends':
       return {
-        ...LABEL_STYLE,
+        ...LABEL_STYLE, markerStart: undefined,
         style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '3 5' },
         markerEnd: marker('#475569'),
       }
     default:
       return {
-        ...LABEL_STYLE,
+        ...LABEL_STYLE, markerStart: undefined,
         style: { stroke: '#475569', strokeWidth: 1.5 },
         markerEnd: marker('#475569'),
       }
