@@ -107,6 +107,29 @@ export async function saveRawText(path: string, text: string): Promise<void> {
   await writeToHandle(_dirHandle, path, text)
 }
 
+// ── Sub-diagram creator ───────────────────────────────────────────────────────
+
+export async function createDiagramIfMissing(path: string, name: string, diagramType: string): Promise<void> {
+  if (!_dirHandle) return
+  try {
+    await readFromHandle(_dirHandle, path)
+    return  // already exists — don't overwrite
+  } catch {
+    // file doesn't exist — create it
+  }
+  const stub: YamlLayer = { name, diagramType: diagramType as YamlLayer['diagramType'], nodes: [], edges: [] }
+  const text = yaml.dump(stub, { lineWidth: -1, noRefs: true })
+  await writeToHandle(_dirHandle, path, text)
+}
+
+// ── Visual-editor YAML save ───────────────────────────────────────────────────
+
+export async function saveYamlLayer(path: string, layer: YamlLayer): Promise<void> {
+  const text = yaml.dump(layer, { lineWidth: -1, noRefs: true })
+  await saveRawText(path, text)
+  yamlCache.set(path, layer)
+}
+
 // ── Metadata loader ───────────────────────────────────────────────────────────
 
 export async function loadMetaFile(path: string): Promise<MetaFile> {

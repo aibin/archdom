@@ -4,7 +4,7 @@ import { DiagramView } from './DiagramView'
 import { Breadcrumb } from './Breadcrumb'
 import { Help } from './Help'
 import { BreadcrumbItem } from './types'
-import { loadYaml, setDirectoryHandle, yamlCache } from './yamlLoader'
+import { loadYaml, setDirectoryHandle, createDiagramIfMissing, yamlCache } from './yamlLoader'
 
 type ShowDirectoryPicker = (opts?: { mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>
 const _showDirectoryPicker = (window as unknown as { showDirectoryPicker?: ShowDirectoryPicker }).showDirectoryPicker
@@ -32,15 +32,15 @@ function LandingPage({ onOpenFolder }: { onOpenFolder: () => void }) {
         )}
 
         <div style={landing.hint}>
-          Point to any folder that contains an <code style={landing.code}>index.yaml</code>.
-          Nested diagrams are loaded on demand as you drill in.
+          Open any folder — blank or existing. Blank folders get a starter diagram automatically.
+          Use <strong style={{ color: '#94a3b8' }}>Edit mode</strong> to build visually, or drop in your own <code style={landing.code}>index.yaml</code>.
         </div>
 
         <div style={landing.structure}>
-          <div style={landing.structureTitle}>Expected folder layout</div>
-          <pre style={landing.pre}>{`my-diagrams/
-  index.yaml          ← root diagram
-  services.yaml       ← drill-in target
+          <div style={landing.structureTitle}>Folder layout</div>
+          <pre style={landing.pre}>{`my-diagrams/          ← open this (can be empty)
+  index.yaml          ← root diagram (auto-created)
+  services.yaml       ← drill-in sub-diagram
   services/
     auth.yaml         ← deeper drill-in
     payments.yaml`}</pre>
@@ -280,6 +280,9 @@ export default function App() {
     try {
       const handle = await _showDirectoryPicker!({ mode: 'readwrite' })
       setDirectoryHandle(handle)
+      // Write index.yaml BEFORE updating React state so the file
+      // exists by the time DiagramView renders and calls loadYaml.
+      await createDiagramIfMissing('index.yaml', handle.name, 'context')
       setFolderName(handle.name)
       navigate('/', { replace: true })
       setRefreshToken(t => t + 1)
