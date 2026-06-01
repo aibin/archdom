@@ -34,7 +34,7 @@ export interface YamlNode {
   meta?: string  // path to metadata YAML file (relative to folder root)
 }
 
-export type EdgeStyle = 'sync' | 'async' | 'event' | 'depends'
+export type EdgeStyle = 'sync' | 'async' | 'event' | 'webhook' | 'depends'
 export type EdgeAnchor = 'top' | 'bottom' | 'left' | 'right'
 
 export interface YamlEdge {

@@ -39,6 +39,12 @@ export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partia
         style: { stroke: '#7c6af7', strokeWidth: 1.5 },
         markerEnd: marker('#7c6af7'),
       }
+    case 'webhook':
+      return {
+        ...LABEL_STYLE, animated: true,
+        style: { stroke: '#f97316', strokeWidth: 1.5, strokeDasharray: '6 3' },
+        markerEnd: marker('#f97316'),
+      }
     case 'depends':
       return {
         ...LABEL_STYLE,

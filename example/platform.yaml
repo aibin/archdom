@@ -225,10 +225,12 @@ edges:
     to: auth-db
     label: Identities & tokens
     style: sync
+    sourceAnchor: bottom
   - from: auth
     to: cache
     label: Session store
     style: sync
+    sourceAnchor: bottom
   - from: accounting
     to: ledger-db
     label: Append journal entries
@@ -237,6 +239,7 @@ edges:
     to: cache
     label: Account balance cache
     style: sync
+    sourceAnchor: bottom
   - from: accounting
     to: bus
     label: Ledger events
@@ -254,6 +257,7 @@ edges:
     to: documents
     label: Generate invoice PDF
     style: async
+    sourceAnchor: bottom
   - from: invoicing
     to: bus
     label: Invoice events
@@ -280,6 +284,7 @@ edges:
     label: Fetch transactions
     technology: REST
     style: sync
+    sourceAnchor: bottom
   - from: banking
     to: accounting
     label: Post bank transactions
@@ -293,6 +298,7 @@ edges:
     to: bus
     label: Bank sync events
     style: event
+    sourceAnchor: right
   - from: tax
     to: ledger-db
     label: Read journals
@@ -309,24 +315,30 @@ edges:
     to: timeseries-db
     label: Store metric snapshots
     style: sync
+    sourceAnchor: bottom
   - from: payments
     to: stripe
     label: Charge / refund
     technology: HTTPS
     style: sync
+    sourceAnchor: bottom
+    bidirectional: true
   - from: payments
     to: accounting
     label: Post payment entries
     technology: gRPC
     style: sync
+    sourceAnchor: left
   - from: payments
     to: bus
     label: Payment events
     style: event
+    sourceAnchor: left
   - from: documents
     to: doc-store
     label: Store generated files
     style: async
+    sourceAnchor: bottom
   - from: audit
     to: bus
     label: Consume all events
@@ -347,11 +359,14 @@ edges:
     to: reporting
     label: Generate scheduled reports
     style: async
+    sourceAnchor: bottom
   - from: job-queue
     to: banking
     label: Trigger bank syncs
     style: async
+    sourceAnchor: bottom
   - from: bus
     to: notifications
     label: Fan-out events
     style: event
+    sourceAnchor: bottom
