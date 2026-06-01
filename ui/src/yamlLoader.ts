@@ -140,3 +140,10 @@ export async function loadMetaFile(path: string): Promise<MetaFile> {
   metaCache.set(path, data)
   return data
 }
+
+export async function saveMetaFile(path: string, data: MetaFile): Promise<void> {
+  if (!_dirHandle) return
+  const text = yaml.dump(data, { lineWidth: -1, noRefs: true })
+  await writeToHandle(_dirHandle, path, text)
+  metaCache.set(path, data)
+}

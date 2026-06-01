@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { EdgeStyle, YamlEdge } from './types'
+import { MetaSection, MetaSectionState, initialMetaState, applyMetaFile, collectMeta } from './MetaSection'
+import { loadMetaFile, saveMetaFile } from './yamlLoader'
 
 const EDGE_STYLES: { value: EdgeStyle; label: string; color: string }[] = [
   { value: 'sync',    label: 'Sync',    color: '#475569' },
@@ -12,13 +14,19 @@ const EDGE_STYLES: { value: EdgeStyle; label: string; color: string }[] = [
 interface Props {
   source: string
   target: string
+  currentYamlPath: string
   initialData?: Partial<YamlEdge>
+  errorMsg?: string
   onSave: (edge: Partial<YamlEdge>) => void
   onCancel: () => void
   onDelete?: () => void
 }
 
-export function EdgeForm({ source, target, initialData, onSave, onCancel, onDelete }: Props) {
+function yamlDir(yamlPath: string): string {
+  return yamlPath.includes('/') ? yamlPath.slice(0, yamlPath.lastIndexOf('/') + 1) : ''
+}
+
+export function EdgeForm({ source, target, currentYamlPath, initialData, errorMsg, onSave, onCancel, onDelete }: Props) {
   const isEditing = !!(initialData?.style || initialData?.label || initialData?.technology)
   const [label,         setLabel]   = useState(initialData?.label ?? '')
   const [technology,    setTech]    = useState(initialData?.technology ?? '')
@@ -26,15 +34,39 @@ export function EdgeForm({ source, target, initialData, onSave, onCancel, onDele
   const [bidirectional, setBidir]   = useState(initialData?.bidirectional ?? false)
   const [step,          setStep]    = useState(initialData?.step != null ? String(initialData.step) : '')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [meta, setMeta]               = useState<MetaSectionState>(initialMetaState(initialData?.meta))
+  const [metaLoading, setMetaLoading] = useState(false)
+  const [metaPathTouched, setMetaPathTouched] = useState(!!initialData?.meta)
+
+  // Auto-suggest meta path from source/target ids
+  useEffect(() => {
+    if (meta.enabled && !metaPathTouched) {
+      setMeta(s => ({ ...s, filePath: `${yamlDir(currentYamlPath)}meta/${source}-${target}.yaml` }))
+    }
+  }, [meta.enabled, metaPathTouched, source, target, currentYamlPath])
+
+  // Load existing meta file content when editing
+  useEffect(() => {
+    if (!initialData?.meta) return
+    setMetaLoading(true)
+    loadMetaFile(initialData.meta)
+      .then(data => setMeta(s => applyMetaFile(s, data)))
+      .catch(() => {})
+      .finally(() => setMetaLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const stepNum = parseInt(step)
+    const metaResult = collectMeta(meta)
+    if (metaResult) await saveMetaFile(metaResult.path, metaResult.content)
     onSave({
       ...(label.trim()      && { label: label.trim() }),
       ...(technology.trim() && { technology: technology.trim() }),
       style,
-      ...(bidirectional     && { bidirectional: true }),
+      bidirectional,  // always emit so unchecking a bidirectional edge is saved correctly
       ...(step.trim() && !isNaN(stepNum) && stepNum > 0 && { step: stepNum }),
+      ...(metaResult && { meta: metaResult.path }),
     })
   }
 
@@ -97,6 +129,22 @@ export function EdgeForm({ source, target, initialData, onSave, onCancel, onDele
           </div>
         </div>
 
+        {/* Metadata section */}
+        <MetaSection
+          state={meta}
+          loading={metaLoading}
+          onChange={s => {
+            if (s.filePath !== meta.filePath) setMetaPathTouched(true)
+            setMeta(s)
+          }}
+        />
+
+        {errorMsg && (
+          <div style={{ background: '#1a0a0a', border: '1px solid #7f1d1d', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#f87171', fontFamily: 'monospace' }}>
+            {errorMsg}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
           <div>
             {onDelete && (
@@ -118,7 +166,7 @@ export function EdgeForm({ source, target, initialData, onSave, onCancel, onDele
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: '#1a1d27', border: '1px solid #2d3148', borderRadius: 12,
-    padding: 24, width: 380, maxWidth: '90vw',
+    padding: 24, width: 380, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto',
     display: 'flex', flexDirection: 'column', gap: 14,
   },
   title:  { margin: 0, fontSize: 16, color: '#e2e8f0', fontWeight: 600 },

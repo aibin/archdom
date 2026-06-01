@@ -77,13 +77,6 @@ export interface YamlLayer {
   theme?: Record<string, string>
 }
 
-export interface SelfLoop {
-  label?: string
-  technology?: string
-  style?: EdgeStyle
-  meta?: string
-}
-
 export interface C4NodeData {
   name: string
   description: string
@@ -93,12 +86,10 @@ export interface C4NodeData {
   external?: boolean
   link?: string
   meta?: string
-  selfLoops?: SelfLoop[]
   theme?: Record<string, string>
   highlighted?: boolean
   onHighlight?: (id: string) => void
   onInfo?: (metaPath: string, title: string) => void
-  onSelfLoop?: (loops: SelfLoop[], nodeName: string) => void
 }
 
 export interface BreadcrumbItem {

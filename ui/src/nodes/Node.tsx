@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { C4NodeData, SelfLoop } from '../types'
+import { C4NodeData } from '../types'
 
 // ── Icon base ─────────────────────────────────────────────────────────────────
 
@@ -222,29 +222,6 @@ function HighlightBtn({ id, highlighted, onHighlight }: {
   )
 }
 
-function SelfLoopBtn({ loops, name, onSelfLoop }: {
-  loops?: SelfLoop[]
-  name: string
-  onSelfLoop?: (loops: SelfLoop[], nodeName: string) => void
-}) {
-  if (!loops?.length || !onSelfLoop) return null
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onSelfLoop(loops, name) }}
-      title={`Self-reference${loops.length > 1 ? 's' : ''}: ${loops.map(l => l.label ?? '—').join(', ')}`}
-      style={{
-        background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer',
-        color: '#f59e0b',
-        display: 'flex', alignItems: 'center', flexShrink: 0,
-      }}
-    >
-      <Ic size={13}>
-        <polyline points="1 4 1 10 7 10" />
-        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-      </Ic>
-    </button>
-  )
-}
 
 function InfoBtn({ meta, name, onInfo }: {
   meta?: string
@@ -291,7 +268,6 @@ export const RectNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       <Handles />
       <div style={{ ...sh.strip, background: color }}>
         {icon}
-        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={sh.lbl}>{label}</span>
         <DrillBadge file={data.file} />
         <LinkBtn link={data.link} />
@@ -324,7 +300,6 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
         gap: 5, color: '#fff', position: 'relative', zIndex: 1,
       }}>
         {icon}
-        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           {label}
         </span>
@@ -381,8 +356,7 @@ export const FolderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       }}>
         <div style={{ ...sh.strip, background: color }}>
           {icons.directory}
-          <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
-          <span style={sh.lbl}>{TYPES.directory.label}{data.external ? ' · Ext' : ''}</span>
+            <span style={sh.lbl}>{TYPES.directory.label}{data.external ? ' · Ext' : ''}</span>
           <DrillBadge file={data.file} />
           <LinkBtn link={data.link} />
           <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
@@ -430,7 +404,6 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
         {data.file && <span style={{ fontSize: 9, color: '#94a3b8' }}>⬇</span>}
-        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <LinkBtn link={data.link} />
         <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
@@ -457,7 +430,6 @@ export const DeploymentNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       <Handles />
       <div style={{ ...sh.strip, background: 'rgba(29,78,216,0.35)' }}>
         {icons['deployment-node']}
-        <SelfLoopBtn loops={data.selfLoops} name={data.name} onSelfLoop={data.onSelfLoop} />
         <span style={sh.lbl}>{TYPES['deployment-node'].label}</span>
         {data.technology && (
           <span style={{ fontSize: 10, opacity: 0.85, whiteSpace: 'nowrap' }}>

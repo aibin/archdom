@@ -19,12 +19,11 @@ import { toPng } from 'html-to-image'
 import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
-import { C4NodeData, MetaFile, SelfLoop, YamlLayer, YamlEdge, YamlNode, DiagramType, YamlGroup } from './types'
+import { C4NodeData, MetaFile, YamlLayer, YamlEdge, YamlNode, DiagramType, YamlGroup } from './types'
 import { loadYaml, loadRawText, saveRawText, saveYamlLayer, createDiagramIfMissing, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
 import { YamlEditor, EditorSaveStatus } from './YamlEditor'
 import { Legend } from './Legend'
 import { MetaOverlay } from './MetaOverlay'
-import { SelfLoopOverlay } from './SelfLoopOverlay'
 import { edgeAppearance, edgeLabel } from './diagramUtils'
 import { NodePalette } from './NodePalette'
 import { NodeForm } from './NodeForm'
@@ -85,19 +84,28 @@ function DiagramInfo({ layer }: { layer: YamlLayer | null }) {
 
 // ── Edge validation ───────────────────────────────────────────────────────────
 
+// Canonical key for the physical connection between two anchor-dots, direction-independent.
+// a(top)→b(top) and b(top)→a(top) produce the same key; a(top)→b(top) and b(left)→a(top) do not.
+function connectionKey(from: string, fromAnchor: string | undefined, to: string, toAnchor: string | undefined): string {
+  const a = `${from}:${fromAnchor ?? ''}`
+  const b = `${to}:${toAnchor ?? ''}`
+  return a < b ? `${a}↔${b}` : `${b}↔${a}`
+}
+
 function validateEdges(edges: YamlEdge[]): void {
   const seen = new Set<string>()
   for (const e of edges) {
-    if (e.from === e.to) continue  // self-loops are intentional
-    const fwd = `${e.from}→${e.to}`
-    const rev = `${e.to}→${e.from}`
-    if (seen.has(rev)) {
+    if (e.from === e.to) throw new Error(`Self-loop on node "${e.from}" is not supported. Remove the edge.`)
+    const key = connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor)
+    if (seen.has(key)) {
+      const fromLabel = `${e.from}${e.sourceAnchor ? `(${e.sourceAnchor})` : ''}`
+      const toLabel   = `${e.to}${e.targetAnchor   ? `(${e.targetAnchor})` : ''}`
       throw new Error(
-        `Edge conflict: "${e.from} → ${e.to}" and "${e.to} → ${e.from}" are both defined.\n` +
+        `Edge conflict: "${fromLabel} → ${toLabel}" duplicates an existing connection.\n` +
         `Remove one and add  bidirectional: true  to the remaining edge instead.`
       )
     }
-    seen.add(fwd)
+    seen.add(key)
   }
 }
 
@@ -111,13 +119,6 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
   validateEdges(layer.edges ?? [])
   const groups: YamlGroup[] = layer.groups ?? []
 
-  // Collect self-loops per node (rendered as an icon, not a canvas edge)
-  const selfLoopMap = new Map<string, SelfLoop[]>()
-  ;(layer.edges ?? []).filter(e => e.from === e.to).forEach(e => {
-    const list = selfLoopMap.get(e.from) ?? []
-    list.push({ label: e.label, technology: e.technology, style: e.style, meta: e.meta })
-    selfLoopMap.set(e.from, list)
-  })
   const nodeGroupOf = new Map<string, string>()
   groups.forEach(grp => grp.nodeIds.forEach(id => nodeGroupOf.set(id, grp.id)))
 
@@ -228,7 +229,7 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
         data: {
           name: n.name, description: n.description ?? '', technology: n.technology ?? '',
           nodeType, file: n.file, external: n.external, link: n.link, meta: n.meta,
-          selfLoops: selfLoopMap.get(n.id), theme: layer.theme,
+          theme: layer.theme,
         },
       })
     })
@@ -266,7 +267,7 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
       label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),
       ...(e.sourceAnchor && { sourceHandle: srcHandle(e.sourceAnchor) }),
       ...(e.targetAnchor && { targetHandle: tgtHandle(e.targetAnchor) }),
-      data: { meta: e.meta, yamlFrom: e.from, yamlTo: e.to },
+      data: { meta: e.meta, yamlFrom: e.from, yamlTo: e.to, yamlSourceAnchor: e.sourceAnchor, yamlTargetAnchor: e.targetAnchor },
     }))
 
   return { nodes: flowNodes, edges }
@@ -301,15 +302,14 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   type MetaState = { path: string; title: string; loading: boolean; data: MetaFile | null; error: string | null }
   const [metaOverlay, setMetaOverlay] = useState<MetaState | null>(null)
 
-  type SelfLoopState = { loops: SelfLoop[]; nodeName: string }
-  const [selfLoopOverlay, setSelfLoopOverlay] = useState<SelfLoopState | null>(null)
 
   // ── Edit mode state ────────────────────────────────────────────────────────
-  const [editMode, setEditMode]         = useState(false)
-  const [pendingEdge, setPendingEdge]   = useState<{ source: string; target: string; sourceHandle: string | null; targetHandle: string | null } | null>(null)
-  const [pendingNode, setPendingNode]   = useState<{ position: { x: number; y: number }; nodeType: string } | null>(null)
-  const [editingNode, setEditingNode]   = useState<YamlNode | null>(null)
-  const [editingEdge, setEditingEdge]   = useState<{ from: string; to: string } | null>(null)
+  const [editMode, setEditMode]             = useState(false)
+  const [pendingEdge, setPendingEdge]       = useState<{ source: string; target: string; sourceHandle: string | null; targetHandle: string | null } | null>(null)
+  const [pendingNode, setPendingNode]       = useState<{ position: { x: number; y: number }; nodeType: string } | null>(null)
+  const [editingNode, setEditingNode]       = useState<YamlNode | null>(null)
+  const [editingEdge, setEditingEdge]       = useState<{ from: string; to: string; sourceAnchor?: string; targetAnchor?: string } | null>(null)
+  const [edgeConflictError, setEdgeConflictError] = useState<string | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const { fitView, setViewport, project } = useReactFlow()
@@ -379,12 +379,6 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     setHighlightId(prev => prev === id ? null : id)
   }, [])
 
-  // ── Self-loop overlay ─────────────────────────────────────────────────────
-  const handleShowSelfLoop = useCallback((loops: SelfLoop[], nodeName: string) => {
-    setSelfLoopOverlay({ loops, nodeName })
-    setMetaOverlay(null)
-  }, [])
-
   // ── YAML editor live-parse + save ─────────────────────────────────────────
   const handleEditorChange = useCallback((text: string) => {
     setEditorText(text)
@@ -401,6 +395,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         setNodes(ln)
         setEdges(le)
         setEditorError(null)
+        setError(null)
         // Persist to disk and invalidate parse cache so navigating away + back reloads fresh
         setEditorSaveStatus('saving')
         await saveRawText(yamlPath, text)
@@ -464,7 +459,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
     const mappedNodes = nodes.map(n => {
       // Group nodes are structural context — never dim them
-      if (n.type === 'group') return { ...n, data: { ...n.data, onHighlight: handleHighlight, onInfo: handleShowMeta, onSelfLoop: handleShowSelfLoop } }
+      if (n.type === 'group') return { ...n, data: { ...n.data, onHighlight: handleHighlight, onInfo: handleShowMeta } }
 
       let opacity = 1
       if (highlightId) {
@@ -476,7 +471,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       return {
         ...n,
         style: opacity < 1 ? { opacity } : {},
-        data: { ...n.data, highlighted: n.id === highlightId, onHighlight: handleHighlight, onInfo: handleShowMeta, onSelfLoop: handleShowSelfLoop },
+        data: { ...n.data, highlighted: n.id === highlightId, onHighlight: handleHighlight, onInfo: handleShowMeta },
       }
     })
 
@@ -502,7 +497,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     })
 
     return [mappedNodes, mappedEdges]
-  }, [nodes, edges, highlightId, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta, handleShowSelfLoop])
+  }, [nodes, edges, highlightId, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta])
 
   // ── Node drag → auto-save positions ───────────────────────────────────────
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -586,8 +581,8 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
   const handleEdgeClick = useCallback((_e: React.MouseEvent, edge: Edge) => {
     if (editMode) {
-      const d = (edge.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
-      if (d.yamlFrom && d.yamlTo) setEditingEdge({ from: d.yamlFrom, to: d.yamlTo })
+      const d = (edge.data ?? {}) as { yamlFrom?: string; yamlTo?: string; yamlSourceAnchor?: string; yamlTargetAnchor?: string }
+      if (d.yamlFrom && d.yamlTo) setEditingEdge({ from: d.yamlFrom, to: d.yamlTo, sourceAnchor: d.yamlSourceAnchor, targetAnchor: d.yamlTargetAnchor })
       return
     }
     setSelectedEdgeId(prev => prev === edge.id ? null : edge.id)
@@ -641,7 +636,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         if (n.id !== editingNode.id) return n
         return {
           ...n, type: getFlowType(nodeData.type ?? 'server-app'),
-          data: { ...n.data, name: nodeData.name, description: nodeData.description ?? '', technology: nodeData.technology ?? '', external: nodeData.external, link: nodeData.link, file: nodeData.file, nodeType: nodeData.type ?? 'server-app' },
+          data: { ...n.data, name: nodeData.name, description: nodeData.description ?? '', technology: nodeData.technology ?? '', external: nodeData.external, link: nodeData.link, file: nodeData.file, meta: nodeData.meta, nodeType: nodeData.type ?? 'server-app' },
         }
       }))
       setEditingNode(null)
@@ -683,23 +678,33 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     let newLayer: YamlLayer
 
     if (editingEdge) {
+      const editKey = connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor)
       newLayer = {
         ...layer,
         edges: (layer.edges ?? []).map(e =>
-          e.from === editingEdge.from && e.to === editingEdge.to
-            ? { from: e.from, to: e.to, ...edgeProps } as YamlEdge
+          connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === editKey
+            ? { from: e.from, to: e.to, ...edgeProps, bidirectional: edgeProps.bidirectional || undefined } as YamlEdge
             : e
         ),
       }
       setEdges(prev => prev.map(e => {
-        const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
-        if (d.yamlFrom !== editingEdge.from || d.yamlTo !== editingEdge.to) return e
+        const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string; yamlSourceAnchor?: string; yamlTargetAnchor?: string }
+        if (connectionKey(d.yamlFrom ?? '', d.yamlSourceAnchor, d.yamlTo ?? '', d.yamlTargetAnchor) !== editKey) return e
         const ye: YamlEdge = { from: editingEdge.from, to: editingEdge.to, ...edgeProps }
         return { ...e, label: edgeLabel(ye), ...edgeAppearance(ye.style, ye.bidirectional ?? false), data: { ...d, meta: ye.meta } }
       }))
       setEditingEdge(null)
     } else if (pendingEdge) {
       const { source, target, sourceHandle, targetHandle } = pendingEdge
+      const key = connectionKey(source, sourceHandle ?? undefined, target, targetHandle ?? undefined)
+      const conflict = (layer.edges ?? []).find(e => e.from !== e.to && connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === key)
+      if (conflict) {
+        const fromLabel = `${source}${sourceHandle ? `(${sourceHandle})` : ''}`
+        const toLabel   = `${target}${targetHandle ? `(${targetHandle})` : ''}`
+        setEdgeConflictError(`"${fromLabel} → ${toLabel}" duplicates an existing connection. Remove one or use bidirectional: true.`)
+        return
+      }
+      setEdgeConflictError(null)
       const anchorProps: Partial<YamlEdge> = {
         ...(sourceHandle && { sourceAnchor: sourceHandle as YamlEdge['sourceAnchor'] }),
         ...(targetHandle && { targetAnchor: targetHandle as YamlEdge['targetAnchor'] }),
@@ -713,7 +718,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         ...edgeAppearance(newYamlEdge.style, newYamlEdge.bidirectional ?? false),
         ...(sourceHandle && { sourceHandle }),
         ...(targetHandle && { targetHandle }),
-        data: { meta: newYamlEdge.meta, yamlFrom: newYamlEdge.from, yamlTo: newYamlEdge.to },
+        data: { meta: newYamlEdge.meta, yamlFrom: newYamlEdge.from, yamlTo: newYamlEdge.to, yamlSourceAnchor: newYamlEdge.sourceAnchor, yamlTargetAnchor: newYamlEdge.targetAnchor },
       }
       setEdges(prev => [...prev, newFlowEdge])
       setPendingEdge(null)
@@ -727,10 +732,11 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   // ── Edit mode: delete edge via form ───────────────────────────────────────
   const handleEdgeFormDelete = useCallback(async () => {
     if (!editingEdge || !layer) return
-    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => !(e.from === editingEdge.from && e.to === editingEdge.to)) }
+    const editKey = connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor)
+    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) !== editKey) }
     setEdges(prev => prev.filter(e => {
-      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
-      return !(d.yamlFrom === editingEdge.from && d.yamlTo === editingEdge.to)
+      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string; yamlSourceAnchor?: string; yamlTargetAnchor?: string }
+      return connectionKey(d.yamlFrom ?? '', d.yamlSourceAnchor, d.yamlTo ?? '', d.yamlTargetAnchor) !== editKey
     }))
     setLayer(newLayer)
     setEditingEdge(null)
@@ -757,12 +763,12 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   // ── Edit mode: delete edges via keyboard ──────────────────────────────────
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
     if (!layer) return
-    const deletedPairs = new Set(deleted.map(e => {
-      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string }
-      return d.yamlFrom && d.yamlTo ? `${d.yamlFrom}→${d.yamlTo}` : ''
+    const deletedKeys = new Set(deleted.map(e => {
+      const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string; yamlSourceAnchor?: string; yamlTargetAnchor?: string }
+      return d.yamlFrom && d.yamlTo ? connectionKey(d.yamlFrom, d.yamlSourceAnchor, d.yamlTo, d.yamlTargetAnchor) : ''
     }).filter(Boolean))
-    if (!deletedPairs.size) return
-    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => !deletedPairs.has(`${e.from}→${e.to}`)) }
+    if (!deletedKeys.size) return
+    const newLayer = { ...layer, edges: (layer.edges ?? []).filter(e => !deletedKeys.has(connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor))) }
     setLayer(newLayer)
     await syncYaml(newLayer)
   }, [layer, syncYaml])
@@ -771,7 +777,6 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     setHighlightId(null)
     setSelectedEdgeId(null)
     setMetaOverlay(null)
-    setSelfLoopOverlay(null)
   }, [])
 
   // ── Export PNG ─────────────────────────────────────────────────────────────
@@ -909,16 +914,6 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         />
       )}
 
-      {/* Self-loop overlay */}
-      {selfLoopOverlay && (
-        <SelfLoopOverlay
-          nodeName={selfLoopOverlay.nodeName}
-          loops={selfLoopOverlay.loops}
-          onClose={() => setSelfLoopOverlay(null)}
-          onMeta={(path, title) => { setSelfLoopOverlay(null); handleShowMeta(path, title) }}
-        />
-      )}
-
       {/* Keyboard hint */}
       <div style={styles.hint}>
         {editMode
@@ -947,9 +942,11 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         <EdgeForm
           source={pendingEdge?.source ?? editingEdge?.from ?? ''}
           target={pendingEdge?.target ?? editingEdge?.to ?? ''}
-          initialData={editingEdge ? (layer?.edges ?? []).find(e => e.from === editingEdge.from && e.to === editingEdge.to) : undefined}
+          currentYamlPath={yamlPath}
+          initialData={editingEdge ? (layer?.edges ?? []).find(e => connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor)) : undefined}
+          errorMsg={edgeConflictError ?? undefined}
           onSave={handleEdgeFormSave}
-          onCancel={() => { setPendingEdge(null); setEditingEdge(null) }}
+          onCancel={() => { setPendingEdge(null); setEditingEdge(null); setEdgeConflictError(null) }}
           onDelete={editingEdge ? handleEdgeFormDelete : undefined}
         />
       )}
@@ -957,7 +954,12 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       {nodes.length === 0 && !error && (
         <div style={styles.empty}>No nodes defined in {yamlPath}</div>
       )}
-      {error && <pre style={styles.error}>{error}</pre>}
+      {error && (
+        <div style={styles.error}>
+          <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>✕</button>
+          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{error}</pre>
+        </div>
+      )}
       </div> {/* end canvas pane */}
     </div>
   )
@@ -1020,9 +1022,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#475569', fontSize: 16, pointerEvents: 'none',
   },
   error: {
-    position: 'absolute', inset: 20,
+    position: 'absolute', top: 44, left: 12, right: 12,
     background: '#1a0a0a', color: '#f87171',
-    padding: 20, borderRadius: 8, border: '1px solid #7f1d1d',
-    fontSize: 12, overflow: 'auto', fontFamily: 'monospace',
+    padding: '10px 14px', borderRadius: 8, border: '1px solid #7f1d1d',
+    fontSize: 12, maxHeight: 140, overflow: 'auto', fontFamily: 'monospace',
+    zIndex: 20,
   },
 }
