@@ -683,7 +683,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         ...layer,
         edges: (layer.edges ?? []).map(e =>
           connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === editKey
-            ? { from: e.from, to: e.to, ...edgeProps, bidirectional: edgeProps.bidirectional || undefined } as YamlEdge
+            ? { from: e.from, to: e.to, ...(e.sourceAnchor && { sourceAnchor: e.sourceAnchor }), ...(e.targetAnchor && { targetAnchor: e.targetAnchor }), ...edgeProps, bidirectional: edgeProps.bidirectional || undefined } as YamlEdge
             : e
         ),
       }
@@ -691,7 +691,17 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         const d = (e.data ?? {}) as { yamlFrom?: string; yamlTo?: string; yamlSourceAnchor?: string; yamlTargetAnchor?: string }
         if (connectionKey(d.yamlFrom ?? '', d.yamlSourceAnchor, d.yamlTo ?? '', d.yamlTargetAnchor) !== editKey) return e
         const ye: YamlEdge = { from: editingEdge.from, to: editingEdge.to, ...edgeProps }
-        return { ...e, label: edgeLabel(ye), ...edgeAppearance(ye.style, ye.bidirectional ?? false), data: { ...d, meta: ye.meta } }
+        // Rebuild from scratch so no stale visual properties (e.g. markerStart) survive from ...e
+        return {
+          id: e.id, source: e.source, target: e.target,
+          ...(e.sourceHandle && { sourceHandle: e.sourceHandle }),
+          ...(e.targetHandle && { targetHandle: e.targetHandle }),
+          ...(e.type         && { type: e.type }),
+          ...(e.zIndex != null && { zIndex: e.zIndex }),
+          label: edgeLabel(ye),
+          ...edgeAppearance(ye.style, ye.bidirectional ?? false),
+          data: { ...d, meta: ye.meta },
+        }
       }))
       setEditingEdge(null)
     } else if (pendingEdge) {
@@ -940,6 +950,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       {/* Edit mode: edge create/edit form */}
       {(pendingEdge || editingEdge) && (
         <EdgeForm
+          key={editingEdge ? connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor) : 'pending'}
           source={pendingEdge?.source ?? editingEdge?.from ?? ''}
           target={pendingEdge?.target ?? editingEdge?.to ?? ''}
           currentYamlPath={yamlPath}
