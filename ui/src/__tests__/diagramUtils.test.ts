@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { edgeLabel, stepPrefix, edgeAppearance } from '../diagramUtils'
 
 describe('stepPrefix', () => {
-  it('returns circled numbers for 1–10', () => {
-    expect(stepPrefix(1)).toBe('① ')
-    expect(stepPrefix(5)).toBe('⑤ ')
-    expect(stepPrefix(10)).toBe('⑩ ')
+  it('returns [n] format', () => {
+    expect(stepPrefix(1)).toBe('[1] ')
+    expect(stepPrefix(5)).toBe('[5] ')
+    expect(stepPrefix(10)).toBe('[10] ')
   })
 
-  it('falls back to (n) outside 1–10', () => {
-    expect(stepPrefix(0)).toBe('(0) ')
-    expect(stepPrefix(11)).toBe('(11) ')
+  it('works for any number', () => {
+    expect(stepPrefix(0)).toBe('[0] ')
+    expect(stepPrefix(11)).toBe('[11] ')
   })
 })
 
@@ -32,11 +32,11 @@ describe('edgeLabel', () => {
   })
 
   it('prepends step prefix to label', () => {
-    expect(edgeLabel({ from: 'a', to: 'b', step: 3, label: 'calls' })).toBe('③ calls')
+    expect(edgeLabel({ from: 'a', to: 'b', step: 3, label: 'calls' })).toBe('[3] calls')
   })
 
   it('renders step-only when no label or technology', () => {
-    expect(edgeLabel({ from: 'a', to: 'b', step: 2 })).toBe('② ')
+    expect(edgeLabel({ from: 'a', to: 'b', step: 2 })).toBe('[2] ')
   })
 })
 
