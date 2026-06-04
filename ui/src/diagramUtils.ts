@@ -63,8 +63,7 @@ export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partia
 }
 
 export function stepPrefix(n: number): string {
-  const circles = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
-  return (n >= 1 && n <= 10 ? circles[n - 1] : `(${n})`) + ' '
+  return `[${n}] `
 }
 
 export function edgeLabel(e: YamlEdge): string | undefined {
