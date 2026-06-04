@@ -96,7 +96,7 @@ function connectionKey(from: string, fromAnchor: string | undefined, to: string,
 function validateEdges(edges: YamlEdge[]): void {
   const seen = new Set<string>()
   for (const e of edges) {
-    if (e.from === e.to) throw new Error(`Self-loop on node "${e.from}" is not supported. Remove the edge.`)
+    if (e.from === e.to) throw new Error(`"${e.from}" has an edge pointing to itself — from and to must be different nodes.`)
     const key = connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor)
     if (seen.has(key)) {
       const fromLabel = `${e.from}${e.sourceAnchor ? `(${e.sourceAnchor})` : ''}`
@@ -139,9 +139,8 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
       const { w, h } = getNodeSize(n.type ?? 'service')
       ig.setNode(id, { width: w, height: h })
     })
-    // Only edges between this group's own members (skip self-loops)
+    // Only edges between this group's own members
     ;(layer.edges ?? []).forEach(e => {
-      if (e.from === e.to) return
       if (nodeGroupOf.get(e.from) === grp.id && nodeGroupOf.get(e.to) === grp.id) {
         const lbl = edgeLabel(e) ?? ''
         ig.setEdge(e.from, e.to, { width: lbl.length * 6, height: lbl ? 18 : 0 })
@@ -190,7 +189,7 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
   ;(layer.edges ?? []).forEach(e => {
     const from = nodeGroupOf.get(e.from) ?? e.from
     const to   = nodeGroupOf.get(e.to)   ?? e.to
-    if (from === to) return  // skip self-loops and intra-group edges
+    if (from === to) return  // skip intra-group edges (both endpoints in same group)
     const key = `${from}→${to}`
     if (!outerSeen.has(key)) {
       const lbl = edgeLabel(e) ?? ''
@@ -262,7 +261,6 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
   const tgtHandle = (a?: string) => a ?? undefined
 
   const edges: Edge[] = (layer.edges ?? [])
-    .filter(e => e.from !== e.to)  // self-loops become node icons, not canvas edges
     .map((e, i) => ({
       id: `e-${i}`, source: e.from, target: e.to,
       label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),

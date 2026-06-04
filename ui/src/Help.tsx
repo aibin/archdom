@@ -164,8 +164,8 @@ groups:
                 ['to',            'string',  'Required. Target node id.'],
                 ['label',         'string',  'Short description of the relationship.'],
                 ['technology',    'string',  'Protocol used, e.g. gRPC, Kafka, HTTPS.'],
-                ['style',         'string',  'Visual style — sync | async | event | depends.'],
-                ['step',          'integer', 'Sequence number for dynamic diagrams. Prefixes label with ①②③…'],
+                ['style',         'string',  'Visual style — sync | async | event | webhook | depends.'],
+                ['step',          'integer', 'Sequence number for dynamic diagrams. Prefixes label with [1] [2] [3]…'],
                 ['bidirectional', 'boolean', 'Renders arrows on both ends of the edge. Use instead of defining two opposing edges.'],
                 ['sourceAnchor',  'string',  'Side of the source node the edge departs from: top | bottom | left | right. Default: bottom.'],
                 ['targetAnchor',  'string',  'Side of the target node the edge arrives at: top | bottom | left | right. Default: top.'],
@@ -178,10 +178,11 @@ groups:
             <Table
               cols={['style', 'Appearance', 'Use for']}
               rows={[
-                ['sync',    'Solid arrow',              'Synchronous request / response (default)'],
-                ['async',   'Dashed arrow',              'Asynchronous message, queue, or fire-and-forget'],
-                ['event',   'Animated purple arrow',     'Domain event published to a bus or topic'],
-                ['depends', 'Dotted line',               'Dependency with no clear call direction'],
+                ['sync',    'Solid arrow',                    'Synchronous request / response (default)'],
+                ['async',   'Dashed arrow',                    'Asynchronous message, queue, or fire-and-forget'],
+                ['event',   'Animated purple arrow',           'Domain event published to a bus or topic'],
+                ['webhook', 'Animated orange dashed arrow',    'Outbound webhook callback or push notification'],
+                ['depends', 'Dotted line',                     'Dependency with no clear call direction'],
                 ['—',       'Double cyan arrow (bidirectional)', 'Two-way communication — add bidirectional: true to any style'],
               ]}
             />
@@ -229,26 +230,6 @@ groups:
     bidirectional: true   # renders arrows on both ends`}</Pre>
           </Section>
 
-          <Section title="Self-loop edges">
-            <p style={styles.p}>
-              Set <Code>from</Code> and <Code>to</Code> to the same node id to define a self-loop.
-              Instead of drawing a canvas arc, Archdom shows an amber <strong style={{ color: 'var(--text)' }}>↺ icon</strong> in
-              the node's header strip. Clicking the icon opens a small overlay listing every
-              self-loop on that node — its label, technology, and edge style.
-              Use self-loops for retry logic, polling, or any in-node cycle.
-            </p>
-            <Pre>{`edges:
-  - from: reconciliation-engine
-    to: reconciliation-engine
-    label: Retry on mismatch
-    style: async
-    meta: platform/accounting/retry-policy.meta.yaml   # optional`}</Pre>
-            <p style={{ ...styles.p, marginTop: 8 }}>
-              A node can have multiple self-loops; all are listed in the overlay when the ↺ icon
-              is clicked.
-            </p>
-          </Section>
-
           <Section title="Node & edge metadata files">
             <p style={styles.p}>
               Add <Code>meta: path/to/file.yaml</Code> to any node or edge. For nodes, an{' '}
@@ -287,7 +268,7 @@ links:
           <Section title="Dynamic diagram steps">
             <p style={styles.p}>
               On a <Code>diagramType: dynamic</Code> diagram, add <Code>step: N</Code> to
-              edges. Labels are prefixed with ①②③… to show interaction order.
+              edges. Labels are prefixed with [1] [2] [3]… to show interaction order.
             </p>
             <Pre>{`diagramType: dynamic
 scope: Place Order Use Case
@@ -435,7 +416,6 @@ edges:
                 ['Click node (with file:)',  'Drill into that layer'],
                 ['👁 icon on node',          'Highlight that node\'s direct connections; click again or click the canvas to clear'],
                 ['ⓘ icon on node',          'Open the metadata overlay (only shown when meta: is set on the node)'],
-                ['↺ icon on node',           'Open self-loop overlay — lists every self-reference on that node with its label and style'],
                 ['Click edge',              'Turn the edge red; also opens metadata overlay if meta: is set on the edge'],
                 ['↵ Enter',                  'Drill into the currently highlighted node'],
                 ['⎋ Escape',                 'Go back one layer (browser back)'],

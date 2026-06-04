@@ -12,14 +12,13 @@ Archdom lets you describe your software architecture in plain YAML files and ren
 
 - **Zero-backend** — diagrams are static YAML files served alongside the app
 - **Infinite drill-down** — any node can link to a child YAML file; breadcrumb tracks your path
-- **10 node types** — Service, SPA, Server App, Boundary, DB, S3, Directory, User, Deployment Node, Infrastructure Node
-- **4 edge styles** — sync, async, event (animated), depends; plus bidirectional and self-loop variants
+- **13 node types** — Software System, Container, Component, Service, SPA, Server App, Boundary, DB, S3, Directory, User, Deployment Node, Infrastructure Node
+- **5 edge styles** — sync, async, event (animated), webhook (animated), depends; plus bidirectional variant
 - **7 diagram types** — System Context (L1), Container (L2), Component (L3), Code (L4), System Landscape, Dynamic, Deployment
 - **Bidirectional edges** — single edge with `bidirectional: true`; conflicting opposing edges are caught at load time
-- **Self-loop edges** — `from`/`to` pointing to the same node adds an amber ↺ icon to the node; clicking it lists every self-reference with its label and style
 - **Metadata overlays** — attach a YAML sidecar (`meta:`) to any node or edge; clicking the ⓘ button opens a rich info panel
 - **External system flag** — grey styling for third-party dependencies
-- **Dynamic diagrams** — numbered interaction steps (①②③…) for use-case walkthroughs
+- **Dynamic diagrams** — numbered interaction steps ([1] [2] [3]…) for use-case walkthroughs
 - **Deployment diagrams** — infrastructure nodes, deployment environments
 - **Shareable URLs** — every diagram layer has its own route (`/platform/orders`)
 - **Highlight mode** — click a node to dim everything except its connections
@@ -119,6 +118,9 @@ edges:
 
 | `type` | Shape | Use for |
 |---|---|---|
+| `software-system` | Rectangle | An entire software system (C4 L1) |
+| `container` | Rectangle | An application or data store (C4 L2) |
+| `component` | Rectangle | A building block inside a container (C4 L3) |
 | `service` | Rectangle | Any backend microservice or process |
 | `spa` | Rectangle | Single-page web application |
 | `server-app` | Rectangle | Server-side rendered application |
@@ -132,6 +134,42 @@ edges:
 
 Add `external: true` to any node to render it in grey, marking it as a system or person outside your ownership boundary (third-party API, external team, etc.).
 
+### Groups
+
+Use the `groups` section to wrap a set of nodes inside a dashed boundary box. Groups represent teams, bounded contexts, or any logical cluster. Nodes in a group are laid out together inside the boundary; ungrouped nodes are placed outside.
+
+```yaml
+groups:
+  - id: core-accounting
+    name: Core Accounting
+    description: Period management and balance tracking   # optional
+    nodeIds:
+      - period-close
+      - coa-manager
+      - reconciliation-engine
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | ✓ | Unique identifier for the group |
+| `name` | string | ✓ | Label shown at the top of the boundary box |
+| `description` | string | | Subtitle shown below the name inside the box |
+| `nodeIds` | string[] | ✓ | List of node ids that belong to this group |
+
+### Theme (colour overrides)
+
+Add a `theme` map to any YAML file to override the default colours for node types in that diagram. Keys are node type names; values are any valid CSS colour. Put it in `index.yaml` to apply a consistent palette across every layer.
+
+```yaml
+theme:
+  service: '#6366f1'          # override the Service colour
+  db: '#0891b2'               # override the DB colour
+  software-system: '#7c3aed'  # override Software System
+  user: '#0284c7'             # override User (person circle)
+```
+
+Any node type not listed in `theme` falls back to the built-in default. The Legend panel reflects the active colours.
+
 ### Edge properties
 
 | Field | Type | Required | Description |
@@ -141,7 +179,7 @@ Add `external: true` to any node to render it in grey, marking it as a system or
 | `label` | string | | Short description of the relationship |
 | `technology` | string | | Protocol or technology, e.g. `gRPC`, `Kafka`, `HTTPS` |
 | `style` | string | | Visual style (default: `sync`) |
-| `step` | integer | | Sequence number for dynamic diagrams — prefixes the label with ①②③… |
+| `step` | integer | | Sequence number for dynamic diagrams — prefixes the label with [1] [2] [3]… |
 | `bidirectional` | boolean | | Render arrows on both ends — use instead of two opposing edges |
 | `sourceAnchor` | string | | Side of the source node the edge departs from: `top` \| `bottom` \| `left` \| `right`. Default: `bottom` |
 | `targetAnchor` | string | | Side of the target node the edge arrives at: `top` \| `bottom` \| `left` \| `right`. Default: `top` |
@@ -154,9 +192,10 @@ Add `external: true` to any node to render it in grey, marking it as a system or
 | `sync` | Solid arrow | Synchronous request / response (default) |
 | `async` | Dashed arrow | Asynchronous message, queue, or fire-and-forget |
 | `event` | Animated purple arrow | Domain event published to a bus or topic |
+| `webhook` | Animated orange dashed arrow | Outbound webhook callback or push notification |
 | `depends` | Dotted line | Dependency with no clear call direction |
 
-Set `bidirectional: true` on any style to add an arrow at both ends (rendered in cyan). Setting `from` and `to` to the **same node id** creates a self-loop — it does not render as a canvas edge. Instead an amber ↺ icon appears in the node header; clicking it opens a detail overlay.
+Set `bidirectional: true` on any style to add an arrow at both ends (rendered in cyan).
 
 ---
 
@@ -219,7 +258,7 @@ edges:
     step: 3
 ```
 
-Edge labels are automatically prefixed with ①②③… — only highlighted edges show their labels in highlight mode.
+Edge labels are automatically prefixed with [1] [2] [3]… — only highlighted edges show their labels in highlight mode.
 
 ---
 
@@ -285,22 +324,6 @@ edges:
 ```
 
 > **Validation rule:** Defining two opposing edges — `A → B` and `B → A` — is an error. The diagram will refuse to load with a clear message asking you to merge them into one bidirectional edge.
-
----
-
-## Self-loop edges
-
-Set `from` and `to` to the **same node id** to define a self-loop. Archdom does not draw a canvas arc — instead it adds an amber **↺ icon** to the node's header strip. Clicking the icon opens a compact overlay listing every self-loop on that node: its label, technology, and edge style. Attach `meta:` to a self-loop edge to get an ⓘ button inside the overlay.
-
-```yaml
-edges:
-  - from: reconciliation-engine
-    to: reconciliation-engine
-    label: Retry on mismatch
-    style: async
-```
-
-A node can have multiple self-loops; all appear as rows in the same overlay.
 
 ---
 
@@ -438,7 +461,6 @@ Every diagram layer is a real URL. Copy the browser address bar to share a direc
 | Clear highlight | Click the highlighted node again, or click the canvas background |
 | Drill highlighted node | Press **Enter** while a node is highlighted |
 | Open metadata overlay | Click the ⓘ button on any node with `meta:` set; or click an edge with `meta:` set |
-| Open self-loop overlay | Click the ↺ icon on any node that has self-loop edges |
 | Close overlays | Click ✕ in the overlay, or click the canvas background |
 | Enter edit mode | Click **✏ Edit** in the toolbar — drag nodes from palette, connect handles, double-click to edit, Backspace to delete |
 | Open YAML editor | Click the `</>` icon at the top-left of the canvas — opens a split-pane editor for the current layer |
@@ -469,7 +491,6 @@ archdom/
 │   │   ├── Legend.tsx          # Toggleable legend panel
 │   │   ├── Help.tsx            # /help full-page authoring guide
 │   │   ├── MetaOverlay.tsx     # Node / edge metadata overlay
-│   │   ├── SelfLoopOverlay.tsx # Self-loop detail overlay
 │   │   ├── yamlLoader.ts       # File System Access API loader + position persistence
 │   │   ├── types.ts            # TypeScript interfaces
 │   │   ├── diagramUtils.ts     # Edge appearance helpers

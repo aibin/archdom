@@ -10,6 +10,7 @@ const EDGE_STYLES = [
   { label: 'Async',         stroke: 'var(--subtle)', dasharray: '8 4',     animated: false, bidir: false },
   { label: 'Depends',       stroke: 'var(--faint)', dasharray: '3 5',     animated: false, bidir: false },
   { label: 'Event',         stroke: '#7c6af7', dasharray: undefined, animated: true,  bidir: false },
+  { label: 'Webhook',       stroke: '#f97316', dasharray: '6 3',     animated: true,  bidir: false },
   { label: 'Bidirectional', stroke: '#06b6d4', dasharray: undefined, animated: false, bidir: true  },
 ]
 
