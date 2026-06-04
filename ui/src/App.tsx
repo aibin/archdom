@@ -5,6 +5,7 @@ import { Breadcrumb } from './Breadcrumb'
 import { Help } from './Help'
 import { BreadcrumbItem } from './types'
 import { loadYaml, setDirectoryHandle, createDiagramIfMissing, yamlCache } from './yamlLoader'
+import { ThemeToggle } from './ThemeToggle'
 
 type ShowDirectoryPicker = (opts?: { mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>
 const _showDirectoryPicker = (window as unknown as { showDirectoryPicker?: ShowDirectoryPicker }).showDirectoryPicker
@@ -14,7 +15,10 @@ const FSA_SUPPORTED = !!_showDirectoryPicker
 
 function LandingPage({ onOpenFolder }: { onOpenFolder: () => void }) {
   return (
-    <div style={landing.root}>
+    <div style={{ ...landing.root, position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 16, right: 16 }}>
+        <ThemeToggle />
+      </div>
       <div style={landing.card}>
         <div style={landing.logo}>Archdom</div>
         <p style={landing.tagline}>
@@ -33,7 +37,7 @@ function LandingPage({ onOpenFolder }: { onOpenFolder: () => void }) {
 
         <div style={landing.hint}>
           Open any folder — blank or existing. Blank folders get a starter diagram automatically.
-          Use <strong style={{ color: '#94a3b8' }}>Edit mode</strong> to build visually, or drop in your own <code style={landing.code}>index.yaml</code>.
+          Use <strong style={{ color: 'var(--muted)' }}>Edit mode</strong> to build visually, or drop in your own <code style={landing.code}>index.yaml</code>.
         </div>
 
         <div style={landing.structure}>
@@ -83,7 +87,7 @@ const landing: Record<string, React.CSSProperties> = {
   },
   tagline: {
     fontSize: 15,
-    color: '#94a3b8',
+    color: 'var(--muted)',
     lineHeight: 1.6,
     margin: 0,
   },
@@ -108,7 +112,7 @@ const landing: Record<string, React.CSSProperties> = {
   },
   hint: {
     fontSize: 13,
-    color: '#64748b',
+    color: 'var(--subtle)',
     lineHeight: 1.6,
   },
   code: {
@@ -124,17 +128,17 @@ const landing: Record<string, React.CSSProperties> = {
   },
   structureTitle: {
     fontSize: 12,
-    color: '#475569',
+    color: 'var(--faint)',
     fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginBottom: 8,
   },
   pre: {
-    background: '#1a1d27',
-    border: '1px solid #2d3148',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 8,
-    color: '#94a3b8',
+    color: 'var(--muted)',
     fontSize: 12,
     fontFamily: 'monospace',
     padding: '14px 16px',
@@ -150,7 +154,7 @@ const landing: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
-    color: '#64748b',
+    color: 'var(--subtle)',
     fontSize: 13,
     textDecoration: 'none',
   },
@@ -234,6 +238,7 @@ function DiagramLayout({ folderName, refreshToken, onOpenFolder, onResync, onClo
         <Link to="/" style={styles.logo}>Archdom</Link>
         <Breadcrumb items={breadcrumb} />
         <div style={{ flex: 1 }} />
+        <ThemeToggle />
         {saveStatus !== 'idle' && (
           <span style={styles.saveStatus}>
             {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
@@ -322,14 +327,14 @@ export default function App() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  root: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117' },
+  root: { display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)' },
   header: {
     display: 'flex',
     alignItems: 'center',
     gap: 16,
     padding: '10px 20px',
-    background: '#1a1d27',
-    borderBottom: '1px solid #2d3148',
+    background: 'var(--surface)',
+    borderBottom: '1px solid var(--border)',
     flexShrink: 0,
   },
   logo: {
@@ -343,20 +348,20 @@ const styles: Record<string, React.CSSProperties> = {
   main: { flex: 1, overflow: 'hidden' },
   saveStatus: {
     fontSize: 12,
-    color: '#64748b',
+    color: 'var(--subtle)',
     whiteSpace: 'nowrap' as const,
     flexShrink: 0,
   },
   ghBtn: {
     display: 'flex',
     alignItems: 'center',
-    color: '#64748b',
+    color: 'var(--subtle)',
     flexShrink: 0,
   },
   resyncBtn: {
     display: 'flex', alignItems: 'center', gap: 5,
-    background: 'none', border: '1px solid #2d3148', borderRadius: 6,
-    color: '#64748b', fontSize: 12, padding: '4px 10px',
+    background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+    color: 'var(--subtle)', fontSize: 12, padding: '4px 10px',
     cursor: 'pointer', flexShrink: 0,
   },
   folderBadge: {
@@ -380,7 +385,7 @@ const styles: Record<string, React.CSSProperties> = {
   folderClose: {
     background: 'none',
     border: 'none',
-    color: '#64748b',
+    color: 'var(--subtle)',
     fontSize: 16,
     lineHeight: 1,
     padding: '0 2px',

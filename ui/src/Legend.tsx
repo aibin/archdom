@@ -6,9 +6,9 @@ interface Props {
 }
 
 const EDGE_STYLES = [
-  { label: 'Sync',          stroke: '#475569', dasharray: undefined, animated: false, bidir: false },
-  { label: 'Async',         stroke: '#64748b', dasharray: '8 4',     animated: false, bidir: false },
-  { label: 'Depends',       stroke: '#475569', dasharray: '3 5',     animated: false, bidir: false },
+  { label: 'Sync',          stroke: 'var(--faint)', dasharray: undefined, animated: false, bidir: false },
+  { label: 'Async',         stroke: 'var(--subtle)', dasharray: '8 4',     animated: false, bidir: false },
+  { label: 'Depends',       stroke: 'var(--faint)', dasharray: '3 5',     animated: false, bidir: false },
   { label: 'Event',         stroke: '#7c6af7', dasharray: undefined, animated: true,  bidir: false },
   { label: 'Bidirectional', stroke: '#06b6d4', dasharray: undefined, animated: false, bidir: true  },
 ]
@@ -30,7 +30,7 @@ export function Legend({ onClose, theme }: Props) {
         </div>
       ))}
       <div style={{ ...styles.row, marginTop: 2 }}>
-        <span style={{ ...styles.dot, background: '#475569', opacity: 0.7 }} />
+        <span style={{ ...styles.dot, background: 'var(--faint)', opacity: 0.7 }} />
         <span style={styles.icon} />
         <span style={{ ...styles.rowLabel, opacity: 0.7 }}>Any type · External</span>
       </div>
@@ -73,8 +73,8 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     bottom: 60,
     left: 12,
-    background: '#1a1d27',
-    border: '1px solid #2d3148',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 10,
     padding: '10px 14px 12px',
     minWidth: 210,
@@ -86,14 +86,14 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 8,
   },
   title: {
-    fontWeight: 700, fontSize: 12, color: '#e2e8f0', letterSpacing: 0.5, textTransform: 'uppercase',
+    fontWeight: 700, fontSize: 12, color: 'var(--text)', letterSpacing: 0.5, textTransform: 'uppercase',
   },
   closeBtn: {
     background: 'none', border: 'none', cursor: 'pointer',
-    color: '#64748b', fontSize: 13, padding: '0 2px', lineHeight: 1,
+    color: 'var(--subtle)', fontSize: 13, padding: '0 2px', lineHeight: 1,
   },
   section: {
-    fontSize: 10, fontWeight: 700, color: '#475569',
+    fontSize: 10, fontWeight: 700, color: 'var(--faint)',
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginTop: 6, marginBottom: 4,
   },
@@ -104,13 +104,13 @@ const styles: Record<string, React.CSSProperties> = {
     width: 12, height: 12, flexShrink: 0,
   },
   icon: {
-    width: 15, height: 15, flexShrink: 0, color: '#94a3b8',
+    width: 15, height: 15, flexShrink: 0, color: 'var(--muted)',
     display: 'flex', alignItems: 'center',
   },
   rowLabel: {
-    fontSize: 12, color: '#94a3b8',
+    fontSize: 12, color: 'var(--muted)',
   },
   divider: {
-    borderTop: '1px solid #2d3148', margin: '8px 0',
+    borderTop: '1px solid var(--border)', margin: '8px 0',
   },
 }

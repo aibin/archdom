@@ -12,11 +12,11 @@ import { MetaSection, MetaSectionState, initialMetaState, applyMetaFile, collect
 import { loadMetaFile, saveMetaFile } from './yamlLoader'
 
 const EDGE_STYLES: { value: EdgeStyle; label: string; color: string }[] = [
-  { value: 'sync',    label: 'Sync',    color: '#475569' },
-  { value: 'async',   label: 'Async',   color: '#64748b' },
+  { value: 'sync',    label: 'Sync',    color: 'var(--faint)' },
+  { value: 'async',   label: 'Async',   color: 'var(--subtle)' },
   { value: 'event',   label: 'Event',   color: '#7c6af7' },
   { value: 'webhook', label: 'Webhook', color: '#f97316' },
-  { value: 'depends', label: 'Depends', color: '#475569' },
+  { value: 'depends', label: 'Depends', color: 'var(--faint)' },
 ]
 
 interface Props {
@@ -89,7 +89,7 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
       <form onSubmit={handleSubmit} style={styles.card}>
         <div>
           <h2 style={styles.title}>{isEditing ? 'Edit Edge' : 'Add Edge'}</h2>
-          <div style={{ fontSize: 12, color: '#475569', marginTop: 4, fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 4, fontFamily: 'monospace' }}>
             {source} <span style={{ color: selectedStyle?.color }}>→</span> {target}
           </div>
         </div>
@@ -103,10 +103,10 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
                 type="button"
                 onClick={() => setStyle(s.value)}
                 style={{
-                  background:   style === s.value ? '#1e2235' : 'transparent',
-                  border:       `1px solid ${style === s.value ? s.color : '#2d3148'}`,
+                  background:   style === s.value ? 'var(--surface2)' : 'transparent',
+                  border:       `1px solid ${style === s.value ? s.color : 'var(--border)'}`,
                   borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                  fontSize:     11, color: style === s.value ? s.color : '#64748b',
+                  fontSize:     11, color: style === s.value ? s.color : 'var(--subtle)',
                 }}
               >
                 {s.label}
@@ -126,7 +126,7 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
             <input type="checkbox" checked={bidirectional} onChange={e => setBidir(e.target.checked)} />
             Bidirectional
           </label>
@@ -183,7 +183,7 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
 function AnchorPicker({ label, value, onChange }: { label: string; value: '' | EdgeAnchor; onChange: (v: '' | EdgeAnchor) => void }) {
   return (
     <div style={{ flex: 1 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', marginBottom: 4 }}>{label}</label>
+      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', marginBottom: 4 }}>{label}</label>
       <div style={{ display: 'flex', gap: 4 }}>
         {ANCHOR_OPTIONS.map(o => (
           <button
@@ -192,11 +192,11 @@ function AnchorPicker({ label, value, onChange }: { label: string; value: '' | E
             onClick={() => onChange(o.value)}
             style={{
               flex: 1, padding: '4px 0', cursor: 'pointer',
-              background:   value === o.value ? '#1e2235' : 'transparent',
-              border:       `1px solid ${value === o.value ? '#7c6af7' : '#2d3148'}`,
+              background:   value === o.value ? 'var(--surface2)' : 'transparent',
+              border:       `1px solid ${value === o.value ? '#7c6af7' : 'var(--border)'}`,
               borderRadius: 6,
               fontSize:     o.value === '' ? 10 : 13,
-              color:        value === o.value ? '#7c6af7' : '#64748b',
+              color:        value === o.value ? '#7c6af7' : 'var(--subtle)',
             }}
           >
             {o.label}
@@ -209,18 +209,18 @@ function AnchorPicker({ label, value, onChange }: { label: string; value: '' | E
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: '#1a1d27', border: '1px solid #2d3148', borderRadius: 12,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
     padding: 24, width: 380, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto',
     display: 'flex', flexDirection: 'column', gap: 14,
   },
-  title:  { margin: 0, fontSize: 16, color: '#e2e8f0', fontWeight: 600 },
-  label:  { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', marginBottom: 4 },
+  title:  { margin: 0, fontSize: 16, color: 'var(--text)', fontWeight: 600 },
+  label:  { fontSize: 11, fontWeight: 600, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', marginBottom: 4 },
   input:  {
-    background: '#0f1117', border: '1px solid #2d3148', borderRadius: 6,
-    color: '#e2e8f0', fontSize: 13, padding: '7px 10px', width: '100%',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+    color: 'var(--text)', fontSize: 13, padding: '7px 10px', width: '100%',
     outline: 'none', boxSizing: 'border-box',
   },
-  cancelBtn:  { background: 'transparent', border: '1px solid #2d3148', borderRadius: 8, color: '#64748b', fontSize: 13, padding: '7px 16px', cursor: 'pointer' },
+  cancelBtn:  { background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--subtle)', fontSize: 13, padding: '7px 16px', cursor: 'pointer' },
   primaryBtn: { background: '#4f46e5', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 18px', cursor: 'pointer' },
   deleteBtn:  { background: 'transparent', border: '1px solid #7f1d1d', borderRadius: 8, color: '#f87171', fontSize: 13, padding: '7px 14px', cursor: 'pointer' },
 }

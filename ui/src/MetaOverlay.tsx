@@ -22,7 +22,7 @@ const RESERVED = new Set(['title', 'description', 'owner', 'status', 'links'])
 export function MetaOverlay({ title, loading, error, meta, onClose }: Props) {
   const displayTitle = meta?.title ?? title
   const statusKey = meta?.status?.toLowerCase() ?? ''
-  const statusColor = STATUS_COLOR[statusKey] ?? '#94a3b8'
+  const statusColor = STATUS_COLOR[statusKey] ?? 'var(--muted)'
 
   const extraFields = meta
     ? Object.entries(meta).filter(([k, v]) => !RESERVED.has(k) && (typeof v === 'string' || typeof v === 'number'))
@@ -113,8 +113,8 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'relative', zIndex: 1,
     pointerEvents: 'all',
     width: 340, maxHeight: '78vh',
-    background: '#1a1d27',
-    border: '1px solid #2d3148',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 12,
     boxShadow: '0 16px 48px rgba(0,0,0,0.65)',
     display: 'flex', flexDirection: 'column',
@@ -124,11 +124,11 @@ const styles: Record<string, React.CSSProperties> = {
   header: {
     display: 'flex', alignItems: 'center', gap: 8,
     padding: '12px 14px 10px',
-    borderBottom: '1px solid #2d3148',
+    borderBottom: '1px solid var(--border)',
     flexShrink: 0,
   },
   panelTitle: {
-    flex: 1, fontWeight: 700, fontSize: 14, color: '#e2e8f0',
+    flex: 1, fontWeight: 700, fontSize: 14, color: 'var(--text)',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   statusBadge: {
@@ -138,14 +138,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   closeBtn: {
     background: 'none', border: 'none', cursor: 'pointer',
-    color: '#64748b', fontSize: 15, lineHeight: 1,
+    color: 'var(--subtle)', fontSize: 15, lineHeight: 1,
     padding: '0 2px', flexShrink: 0,
   },
   body: {
     overflowY: 'auto', padding: '12px 14px 14px', flex: 1,
   },
   muted: {
-    color: '#64748b', fontSize: 13, margin: 0,
+    color: 'var(--subtle)', fontSize: 13, margin: 0,
   },
   errorText: {
     color: '#f87171', fontSize: 11, fontFamily: 'monospace',
@@ -155,20 +155,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', gap: 10, marginBottom: 6,
   },
   fieldKey: {
-    fontSize: 11, color: '#475569',
+    fontSize: 11, color: 'var(--faint)',
     textTransform: 'capitalize' as const,
     minWidth: 72, flexShrink: 0,
     paddingTop: 1,
   },
   fieldVal: {
-    fontSize: 12, color: '#94a3b8',
+    fontSize: 12, color: 'var(--muted)',
   },
   description: {
     fontSize: 13, color: '#cbd5e1', lineHeight: 1.65,
     margin: '8px 0 10px', whiteSpace: 'pre-wrap',
   },
   sectionLabel: {
-    fontSize: 10, color: '#475569',
+    fontSize: 10, color: 'var(--faint)',
     textTransform: 'uppercase' as const, letterSpacing: 0.6,
     marginBottom: 6,
   },

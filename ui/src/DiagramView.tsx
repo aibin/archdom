@@ -28,6 +28,7 @@ import { edgeAppearance, edgeLabel } from './diagramUtils'
 import { NodePalette } from './NodePalette'
 import { NodeForm } from './NodeForm'
 import { EdgeForm } from './EdgeForm'
+import { useTheme } from './useTheme'
 
 // ── Diagram type badge ────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ const DIAGRAM_META: Record<string, { level: string; color: string }> = {
   container:  { level: 'L2 · Container',         color: '#4f46e5' },
   component:  { level: 'L3 · Component',         color: '#0891b2' },
   code:       { level: 'L4 · Code',              color: '#16a34a' },
-  landscape:  { level: 'System Landscape',       color: '#64748b' },
+  landscape:  { level: 'System Landscape',       color: 'var(--subtle)' },
   dynamic:    { level: 'Dynamic Diagram',        color: '#ea7317' },
   deployment: { level: 'Deployment Diagram',     color: '#1d4ed8' },
 }
@@ -52,7 +53,7 @@ function DiagramInfo({ layer }: { layer: YamlLayer | null }) {
     }}>
       {layer.name && (
         <div style={{
-          fontSize: 13, fontWeight: 700, color: '#e2e8f0',
+          fontSize: 13, fontWeight: 700, color: 'var(--text)',
           maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {layer.name}
@@ -70,8 +71,8 @@ function DiagramInfo({ layer }: { layer: YamlLayer | null }) {
         )}
         {(layer.scope || layer.environment) && (
           <div style={{
-            background: 'rgba(26,29,39,0.88)', backdropFilter: 'blur(4px)',
-            color: '#64748b', fontSize: 10,
+            background: 'var(--surface-overlay)', backdropFilter: 'blur(4px)',
+            color: 'var(--subtle)', fontSize: 10,
             padding: '2px 8px', borderRadius: 20,
           }}>
             {[layer.scope, layer.environment].filter(Boolean).join(' · ')}
@@ -284,6 +285,7 @@ interface Props {
 }
 
 function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayoutSaved }: Props) {
+  const { isDark } = useTheme()
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [fitPending, setFitPending] = useState(false)
@@ -552,6 +554,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
   // ── Reset layout ───────────────────────────────────────────────────────────
   const handleResetLayout = useCallback(async () => {
+    if (!window.confirm('Reset layout? This clears saved positions for this layer and reverts to auto-layout.')) return
     await clearPositions(yamlPath)
     loadAndLayout(yamlPath, true)
   }, [yamlPath, loadAndLayout])
@@ -808,7 +811,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     try {
       const flowEl = containerRef.current.querySelector<HTMLElement>('.react-flow')
       if (!flowEl) return
-      const dataUrl = await toPng(flowEl, { backgroundColor: '#0f1117' })
+      const dataUrl = await toPng(flowEl, { backgroundColor: 'var(--bg)' })
       const a = document.createElement('a')
       a.href = dataUrl
       a.download = `${layer?.name ?? 'diagram'}.png`
@@ -852,15 +855,16 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         onNodesDelete={handleNodesDelete}
         onEdgesDelete={handleEdgesDelete}
         deleteKeyCode={editMode ? 'Backspace' : null}
+        nodesDraggable={editMode}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={40}
         minZoom={0.1}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#2d3148" gap={24} />
-        <Controls style={{ background: '#1a1d27', borderColor: '#2d3148', color: '#94a3b8' }} />
-        <MiniMap style={{ background: '#1a1d27', borderColor: '#2d3148' }} nodeColor="#4f46e5" maskColor="rgba(15,17,23,0.7)" />
+        <Background color={isDark ? '#2d3148' : '#cbd5e1'} gap={24} />
+        <Controls style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }} />
+        <MiniMap style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} nodeColor="#4f46e5" maskColor={isDark ? 'rgba(15,17,23,0.7)' : 'rgba(241,245,249,0.7)'} />
       </ReactFlow>
 
       {/* Diagram name + type below the YAML toggle */}
@@ -870,7 +874,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       <button
         onClick={() => setEditorOpen(v => !v)}
         title={editorOpen ? 'Close YAML editor' : 'Open YAML editor'}
-        style={{ ...styles.editorToggleBtn, color: editorOpen ? '#7c6af7' : '#64748b' }}
+        style={{ ...styles.editorToggleBtn, color: editorOpen ? '#7c6af7' : 'var(--subtle)' }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -890,8 +894,8 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         />
         <button
           onClick={() => setEditMode(v => !v)}
-          title={editMode ? 'Exit edit mode' : 'Enter edit mode — drag nodes, connect edges'}
-          style={{ ...styles.iconBtn, color: editMode ? '#10b981' : '#94a3b8', borderColor: editMode ? '#10b981' : '#2d3148' }}
+          title={editMode ? 'Exit edit mode' : 'Enter edit mode — drag nodes, reposition, connect edges'}
+          style={{ ...styles.iconBtn, color: editMode ? '#10b981' : 'var(--muted)', borderColor: editMode ? '#10b981' : 'var(--border)' }}
         >
           {editMode ? '✏ Editing' : '✏ Edit'}
         </button>
@@ -913,7 +917,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         <button
           onClick={() => setLegendOpen(v => !v)}
           title="Toggle legend"
-          style={{ ...styles.iconBtn, color: legendOpen ? '#7c6af7' : '#94a3b8' }}
+          style={{ ...styles.iconBtn, color: legendOpen ? '#7c6af7' : 'var(--muted)' }}
         >
           ☰ Legend
         </button>
@@ -1008,14 +1012,14 @@ const styles: Record<string, React.CSSProperties> = {
     width: 4,
     flexShrink: 0,
     cursor: 'col-resize',
-    background: '#2d3148',
+    background: 'var(--border)',
     transition: 'background 0.15s',
     zIndex: 5,
   },
   editorToggleBtn: {
     position: 'absolute', top: 12, left: 12, zIndex: 5,
-    background: 'rgba(26,29,39,0.9)', backdropFilter: 'blur(4px)',
-    border: '1px solid #2d3148', borderRadius: 8,
+    background: 'var(--backdrop-heavy)', backdropFilter: 'blur(4px)',
+    border: '1px solid var(--border)', borderRadius: 8,
     padding: '5px 8px', cursor: 'pointer',
     display: 'flex', alignItems: 'center',
   },
@@ -1024,28 +1028,28 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', alignItems: 'center', gap: 6, zIndex: 5,
   },
   search: {
-    background: 'rgba(26,29,39,0.9)', backdropFilter: 'blur(4px)',
-    border: '1px solid #2d3148', borderRadius: 8,
-    color: '#e2e8f0', fontSize: 12, padding: '5px 10px',
+    background: 'var(--backdrop-heavy)', backdropFilter: 'blur(4px)',
+    border: '1px solid var(--border)', borderRadius: 8,
+    color: 'var(--text)', fontSize: 12, padding: '5px 10px',
     outline: 'none', width: 160,
   },
   iconBtn: {
-    background: 'rgba(26,29,39,0.9)', backdropFilter: 'blur(4px)',
-    border: '1px solid #2d3148', borderRadius: 8,
-    color: '#94a3b8', fontSize: 12, padding: '5px 10px',
+    background: 'var(--backdrop-heavy)', backdropFilter: 'blur(4px)',
+    border: '1px solid var(--border)', borderRadius: 8,
+    color: 'var(--muted)', fontSize: 12, padding: '5px 10px',
     cursor: 'pointer', whiteSpace: 'nowrap',
   },
   hint: {
     position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-    fontSize: 11, color: '#475569',
-    background: 'rgba(26,29,39,0.85)', backdropFilter: 'blur(4px)',
+    fontSize: 11, color: 'var(--faint)',
+    background: 'var(--hint-bg)', backdropFilter: 'blur(4px)',
     padding: '4px 12px', borderRadius: 20,
     pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap',
   },
   empty: {
     position: 'absolute', inset: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#475569', fontSize: 16, pointerEvents: 'none',
+    color: 'var(--faint)', fontSize: 16, pointerEvents: 'none',
   },
   error: {
     position: 'absolute', top: 44, left: 12, right: 12,

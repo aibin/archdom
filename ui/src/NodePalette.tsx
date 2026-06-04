@@ -32,7 +32,7 @@ export function NodePalette() {
       gap: 4,
       background: 'rgba(20,22,32,0.95)',
       backdropFilter: 'blur(8px)',
-      border: '1px solid #2d3148',
+      border: '1px solid var(--border)',
       borderRadius: 40,
       padding: '6px 10px',
     }}>
@@ -51,7 +51,7 @@ function PaletteIcon({
   onDragStart: (e: React.DragEvent, t: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const color = TYPES[type]?.color ?? '#475569'
+  const color = TYPES[type]?.color ?? 'var(--faint)'
   const label = TYPES[type]?.label ?? type
 
   return (
@@ -63,12 +63,12 @@ function PaletteIcon({
           bottom: 'calc(100% + 8px)',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: '#0f1117',
-          border: '1px solid #2d3148',
+          background: 'var(--bg)',
+          border: '1px solid var(--border)',
           borderRadius: 6,
           padding: '4px 8px',
           fontSize: 11,
-          color: '#e2e8f0',
+          color: 'var(--text)',
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
           zIndex: 20,
@@ -83,7 +83,7 @@ function PaletteIcon({
             width: 0, height: 0,
             borderLeft: '5px solid transparent',
             borderRight: '5px solid transparent',
-            borderTop: `5px solid #2d3148`,
+            borderTop: `5px solid var(--border)`,
           }} />
         </div>
       )}
@@ -102,7 +102,7 @@ function PaletteIcon({
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'grab',
-          color: hovered ? color : '#64748b',
+          color: hovered ? color : 'var(--subtle)',
           background: hovered ? `${color}18` : 'transparent',
           border: `1px solid ${hovered ? color + '55' : 'transparent'}`,
           transition: 'all 0.12s ease',

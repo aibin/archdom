@@ -27,7 +27,7 @@ export function Breadcrumb({ items }: Props) {
 const styles: Record<string, React.CSSProperties> = {
   nav:    { display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   item:   { display: 'flex', alignItems: 'center', gap: 4 },
-  link:   { color: '#94a3b8', fontSize: 14, textDecoration: 'none', padding: '2px 4px', borderRadius: 4 },
-  active: { color: '#e2e8f0', fontSize: 14, fontWeight: 600, padding: '2px 4px' },
-  sep:    { color: '#475569', fontSize: 14 },
+  link:   { color: 'var(--muted)', fontSize: 14, textDecoration: 'none', padding: '2px 4px', borderRadius: 4 },
+  active: { color: 'var(--text)', fontSize: 14, fontWeight: 600, padding: '2px 4px' },
+  sep:    { color: 'var(--faint)', fontSize: 14 },
 }

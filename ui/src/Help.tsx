@@ -16,7 +16,7 @@ export function Help() {
           <Section title="Overview">
             <p style={styles.p}>
               Archdom reads <Code>.yaml</Code> files directly from a local folder on your machine —
-              nothing is uploaded anywhere. Click <strong style={{ color: '#e2e8f0' }}>Open Folder</strong> on
+              nothing is uploaded anywhere. Click <strong style={{ color: 'var(--text)' }}>Open Folder</strong> on
               the landing page and pick any folder that contains an <Code>index.yaml</Code>.
               Nested diagrams load on demand as you drill in. Everything stays in your browser.
             </p>
@@ -189,8 +189,8 @@ groups:
 
           <Section title="Edge anchors">
             <p style={styles.p}>
-              By default edges depart from the <strong style={{ color: '#e2e8f0' }}>bottom</strong> of
-              the source node and arrive at the <strong style={{ color: '#e2e8f0' }}>top</strong> of the
+              By default edges depart from the <strong style={{ color: 'var(--text)' }}>bottom</strong> of
+              the source node and arrive at the <strong style={{ color: 'var(--text)' }}>top</strong> of the
               target node. Use <Code>sourceAnchor</Code> and <Code>targetAnchor</Code> to
               route an edge from any of the four sides instead.
             </p>
@@ -232,7 +232,7 @@ groups:
           <Section title="Self-loop edges">
             <p style={styles.p}>
               Set <Code>from</Code> and <Code>to</Code> to the same node id to define a self-loop.
-              Instead of drawing a canvas arc, Archdom shows an amber <strong style={{ color: '#e2e8f0' }}>↺ icon</strong> in
+              Instead of drawing a canvas arc, Archdom shows an amber <strong style={{ color: 'var(--text)' }}>↺ icon</strong> in
               the node's header strip. Clicking the icon opens a small overlay listing every
               self-loop on that node — its label, technology, and edge style.
               Use self-loops for retry logic, polling, or any in-node cycle.
@@ -252,7 +252,7 @@ groups:
           <Section title="Node & edge metadata files">
             <p style={styles.p}>
               Add <Code>meta: path/to/file.yaml</Code> to any node or edge. For nodes, an{' '}
-              <strong style={{ color: '#e2e8f0' }}>ⓘ info button</strong> appears in the node header.
+              <strong style={{ color: 'var(--text)' }}>ⓘ info button</strong> appears in the node header.
               For edges, clicking the edge opens the overlay. Both show the same metadata overlay.
             </p>
             <Pre>{`# in your diagram YAML
@@ -339,8 +339,8 @@ edges:
             <p style={styles.p}>
               Drag any node to rearrange the diagram. Archdom auto-saves positions the moment you
               release the drag — no button needed. The header shows{' '}
-              <strong style={{ color: '#e2e8f0' }}>Saving…</strong> while the write is in flight,
-              then <strong style={{ color: '#e2e8f0' }}>Saved</strong> once complete.
+              <strong style={{ color: 'var(--text)' }}>Saving…</strong> while the write is in flight,
+              then <strong style={{ color: 'var(--text)' }}>Saved</strong> once complete.
             </p>
             <p style={styles.p}>
               All layer positions are stored in a single{' '}
@@ -354,7 +354,7 @@ edges:
 }`}</Pre>
             <p style={{ ...styles.p, marginTop: 8 }}>
               New nodes added to a YAML after a save fall back to auto-layout; existing saved nodes
-              keep their positions. Click <strong style={{ color: '#e2e8f0' }}>⊞ Reset</strong> in
+              keep their positions. Click <strong style={{ color: 'var(--text)' }}>⊞ Reset</strong> in
               the toolbar to discard saved positions for the current layer and revert to dagre
               auto-layout.
             </p>
@@ -367,7 +367,7 @@ edges:
 
           <Section title="YAML editor">
             <p style={styles.p}>
-              Click the <strong style={{ color: '#e2e8f0' }}>&lt;/&gt;</strong> icon at the
+              Click the <strong style={{ color: 'var(--text)' }}>&lt;/&gt;</strong> icon at the
               top-left of the canvas to open a built-in YAML editor for the current layer.
               The diagram stays live on the right so you can see changes as you type.
             </p>
@@ -390,7 +390,7 @@ edges:
 
           <Section title="Visual edit mode">
             <p style={styles.p}>
-              Click <strong style={{ color: '#e2e8f0' }}>✏ Edit</strong> in the canvas toolbar
+              Click <strong style={{ color: 'var(--text)' }}>✏ Edit</strong> in the canvas toolbar
               to enter edit mode. In this mode, drill-down clicks are disabled so you can
               interact with nodes directly. Click <strong style={{ color: '#10b981' }}>✏ Editing</strong> again
               to leave edit mode. All changes are written to disk immediately — no separate save step.
@@ -515,12 +515,12 @@ function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
 const styles: Record<string, React.CSSProperties> = {
   root: {
     display: 'flex', flexDirection: 'column', minHeight: '100vh',
-    background: '#0f1117', color: '#e2e8f0',
+    background: 'var(--bg)', color: 'var(--text)',
   },
   header: {
     display: 'flex', alignItems: 'center', gap: 16,
     padding: '10px 20px',
-    background: '#1a1d27', borderBottom: '1px solid #2d3148',
+    background: 'var(--surface)', borderBottom: '1px solid var(--border)',
     flexShrink: 0,
   },
   logo: {
@@ -528,11 +528,11 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 1, textDecoration: 'none', flexShrink: 0,
   },
   pageTitle: {
-    flex: 1, fontSize: 14, color: '#94a3b8', fontWeight: 500,
+    flex: 1, fontSize: 14, color: 'var(--muted)', fontWeight: 500,
   },
   backLink: {
-    fontSize: 13, color: '#64748b', textDecoration: 'none',
-    padding: '4px 10px', border: '1px solid #2d3148',
+    fontSize: 13, color: 'var(--subtle)', textDecoration: 'none',
+    padding: '4px 10px', border: '1px solid var(--border)',
     borderRadius: 6, whiteSpace: 'nowrap',
   },
   body: {
@@ -545,40 +545,40 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 15, fontWeight: 700, color: '#7c6af7',
     textTransform: 'uppercase', letterSpacing: 0.8,
     margin: '0 0 12px', paddingBottom: 6,
-    borderBottom: '1px solid #2d3148',
+    borderBottom: '1px solid var(--border)',
   },
   p: {
-    fontSize: 14, color: '#94a3b8', lineHeight: 1.7, margin: '0 0 8px',
+    fontSize: 14, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 8px',
   },
   inlineCode: {
-    background: '#0f1117', color: '#a5f3fc',
+    background: 'var(--bg)', color: 'var(--code)',
     fontFamily: 'monospace', fontSize: 12,
     padding: '1px 5px', borderRadius: 4,
-    border: '1px solid #2d3148',
+    border: '1px solid var(--border)',
   },
   pre: {
-    background: '#0f1117', color: '#a5f3fc',
+    background: 'var(--bg)', color: 'var(--code)',
     fontFamily: 'monospace', fontSize: 12,
     padding: 16, borderRadius: 8,
-    border: '1px solid #2d3148',
+    border: '1px solid var(--border)',
     overflowX: 'auto', margin: '0 0 8px', lineHeight: 1.6,
   },
   table: {
     width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 8,
   },
   th: {
-    textAlign: 'left', color: '#475569', fontWeight: 600,
-    padding: '6px 12px', borderBottom: '1px solid #2d3148',
+    textAlign: 'left', color: 'var(--faint)', fontWeight: 600,
+    padding: '6px 12px', borderBottom: '1px solid var(--border)',
     fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5,
   },
   td: {
-    padding: '7px 12px', color: '#94a3b8', verticalAlign: 'top',
-    borderBottom: '1px solid rgba(45,49,72,0.5)',
+    padding: '7px 12px', color: 'var(--muted)', verticalAlign: 'top',
+    borderBottom: '1px solid var(--border)',
   },
   tdCode: {
-    padding: '7px 12px', color: '#a5f3fc',
+    padding: '7px 12px', color: 'var(--code)',
     fontFamily: 'monospace', fontSize: 12, verticalAlign: 'top',
-    borderBottom: '1px solid rgba(45,49,72,0.5)',
+    borderBottom: '1px solid var(--border)',
     whiteSpace: 'nowrap',
   },
 }

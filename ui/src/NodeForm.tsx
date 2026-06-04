@@ -112,7 +112,7 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
 
         <Field label={idConflict ? 'ID * — already exists' : 'ID *'} error={idConflict}>
           <input
-            style={{ ...styles.input, fontFamily: 'monospace', borderColor: idConflict ? '#f87171' : '#2d3148' }}
+            style={{ ...styles.input, fontFamily: 'monospace', borderColor: idConflict ? '#f87171' : 'var(--border)' }}
             value={id}
             onChange={e => { setIdTouched(true); setId(e.target.value) }}
             placeholder="my-service"
@@ -139,7 +139,7 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
           />
         </Field>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
           <input type="checkbox" checked={external} onChange={e => setExternal(e.target.checked)} />
           External system
         </label>
@@ -149,8 +149,8 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
         </Field>
 
         {/* Drill-down section */}
-        <div style={{ borderTop: '1px solid #2d3148', paddingTop: 12 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8', cursor: 'pointer' }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
             <input type="checkbox" checked={drilldown} onChange={e => setDrilldown(e.target.checked)} />
             Enable drill-down into sub-diagram
           </label>
@@ -165,7 +165,7 @@ export function NodeForm({ initialType, initialData, existingIds, currentYamlPat
                   placeholder="my-service.yaml"
                 />
                 {!initialData?.file && (
-                  <span style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                  <span style={{ fontSize: 11, color: 'var(--faint)', marginTop: 2 }}>
                     A blank diagram will be created at this path if it doesn't exist
                   </span>
                 )}
@@ -221,7 +221,7 @@ function Backdrop({ children }: { children: React.ReactNode }) {
 function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: boolean }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, color: error ? '#f87171' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: error ? '#f87171' : 'var(--subtle)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
         {label}
       </label>
       {children}
@@ -231,19 +231,19 @@ function Field({ label, children, error }: { label: string; children: React.Reac
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: '#1a1d27', border: '1px solid #2d3148', borderRadius: 12,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
     padding: 24, width: 400, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto',
     display: 'flex', flexDirection: 'column', gap: 14,
   },
-  title: { margin: 0, fontSize: 16, color: '#e2e8f0', fontWeight: 600 },
+  title: { margin: 0, fontSize: 16, color: 'var(--text)', fontWeight: 600 },
   input: {
-    background: '#0f1117', border: '1px solid #2d3148', borderRadius: 6,
-    color: '#e2e8f0', fontSize: 13, padding: '7px 10px', width: '100%',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+    color: 'var(--text)', fontSize: 13, padding: '7px 10px', width: '100%',
     outline: 'none', boxSizing: 'border-box',
   },
   cancelBtn: {
-    background: 'transparent', border: '1px solid #2d3148', borderRadius: 8,
-    color: '#64748b', fontSize: 13, padding: '7px 16px', cursor: 'pointer',
+    background: 'transparent', border: '1px solid var(--border)', borderRadius: 8,
+    color: 'var(--subtle)', fontSize: 13, padding: '7px 16px', cursor: 'pointer',
   },
   primaryBtn: {
     background: '#4f46e5', border: 'none', borderRadius: 8,

@@ -122,7 +122,7 @@ export const TYPES: Record<string, TypeConfig> = {
   component:           { color: '#059669', label: 'Component'         },
   // ── Specialised sub-types ────────────────────────────────────────────────────
   service:             { color: '#4f46e5', label: 'Service'           },
-  boundary:            { color: '#64748b', label: 'Boundary'          },
+  boundary:            { color: 'var(--subtle)', label: 'Boundary'          },
   s3:                  { color: '#ea7317', label: 'AWS S3'            },
   directory:           { color: '#ca8a04', label: 'Directory'         },
   db:                  { color: '#0891b2', label: 'DB / RDS'          },
@@ -130,12 +130,12 @@ export const TYPES: Record<string, TypeConfig> = {
   'server-app':        { color: '#16a34a', label: 'Server App'        },
   user:                { color: '#2563eb', label: 'User'              },
   'deployment-node':   { color: '#1d4ed8', label: 'Deployment Node'   },
-  'infrastructure-node': { color: '#64748b', label: 'Infrastructure'  },
+  'infrastructure-node': { color: 'var(--subtle)', label: 'Infrastructure'  },
 }
 const FALLBACK = TYPES.service
 
 export function getColor(nodeType: string, theme?: Record<string, string>, isExternal = false): string {
-  if (isExternal) return '#475569'
+  if (isExternal) return 'var(--faint)'
   return theme?.[nodeType] ?? TYPES[nodeType]?.color ?? FALLBACK.color
 }
 
@@ -163,10 +163,10 @@ function Handles({ topOffset, bottomOffset }: { topOffset?: number; bottomOffset
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const sh = {
-  handle: { background: '#475569', border: 'none', width: 8, height: 8 } as React.CSSProperties,
-  name:   { fontWeight: 700, fontSize: 13, color: '#e2e8f0', padding: '7px 10px 2px', lineHeight: 1.3 } as React.CSSProperties,
-  tech:   { fontSize: 11, color: '#94a3b8', padding: '0 10px 2px', fontStyle: 'italic' } as React.CSSProperties,
-  desc:   { fontSize: 11, color: '#94a3b8', padding: '0 10px 8px', lineHeight: 1.4 } as React.CSSProperties,
+  handle: { background: 'var(--faint)', border: 'none', width: 8, height: 8 } as React.CSSProperties,
+  name:   { fontWeight: 700, fontSize: 13, color: 'var(--text)', padding: '7px 10px 2px', lineHeight: 1.3 } as React.CSSProperties,
+  tech:   { fontSize: 11, color: 'var(--muted)', padding: '0 10px 2px', fontStyle: 'italic' } as React.CSSProperties,
+  desc:   { fontSize: 11, color: 'var(--muted)', padding: '0 10px 8px', lineHeight: 1.4 } as React.CSSProperties,
   strip:  { display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', color: '#fff' } as React.CSSProperties,
   lbl:    { flex: 1, fontSize: 11, fontWeight: 600 as const, letterSpacing: 0.5, textTransform: 'uppercase' as const, opacity: 0.95 },
 }
@@ -258,7 +258,7 @@ export const RectNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
   return (
     <div style={{
       width: 220,
-      background: isBoundary ? 'rgba(30,34,53,0.55)' : '#1e2235',
+      background: isBoundary ? 'rgba(30,34,53,0.55)' : 'var(--surface2)',
       border: `2px ${isBoundary ? 'dashed' : 'solid'} ${color}`,
       borderRadius: 8, overflow: 'hidden',
       cursor: data.file ? 'pointer' : 'default',
@@ -310,7 +310,7 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       </div>
 
       <div style={{
-        background: '#1e2235',
+        background: 'var(--surface2)',
         borderLeft: `2px solid ${color}`,
         borderRight: `2px solid ${color}`,
         padding: '6px 12px 10px',
@@ -349,7 +349,7 @@ export const FolderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       }} />
 
       <div style={{
-        background: '#1e2235',
+        background: 'var(--surface2)',
         border: `2px solid ${color}`,
         borderRadius: '0 6px 6px 6px',
         overflow: 'hidden',
@@ -379,7 +379,7 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
     <div style={{
       width: 120, height: 120,
       borderRadius: '50%',
-      background: '#1e2235',
+      background: 'var(--surface2)',
       border: `2px solid ${color}`,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
@@ -395,7 +395,7 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
         <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
       </svg>
 
-      <div style={{ fontWeight: 700, fontSize: 11, color: '#e2e8f0', marginTop: 4, lineHeight: 1.2 }}>
+      <div style={{ fontWeight: 700, fontSize: 11, color: 'var(--text)', marginTop: 4, lineHeight: 1.2 }}>
         {data.name}
       </div>
       <div style={{ fontSize: 9, color, fontWeight: 600, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.4 }}>
@@ -403,7 +403,7 @@ export const PersonNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-        {data.file && <span style={{ fontSize: 9, color: '#94a3b8' }}>⬇</span>}
+        {data.file && <span style={{ fontSize: 9, color: 'var(--muted)' }}>⬇</span>}
         <LinkBtn link={data.link} />
         <InfoBtn meta={data.meta} name={data.name} onInfo={data.onInfo} />
         <HighlightBtn id={id} highlighted={data.highlighted} onHighlight={data.onHighlight} />
@@ -459,10 +459,10 @@ export const GroupNode = memo(({ data }: NodeProps<C4NodeData>) => (
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px' }}>
       {icons.boundary}
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>{data.name}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{data.name}</span>
     </div>
     {data.description && (
-      <div style={{ fontSize: 10, color: '#64748b', padding: '0 12px 4px', fontStyle: 'italic' }}>
+      <div style={{ fontSize: 10, color: 'var(--subtle)', padding: '0 12px 4px', fontStyle: 'italic' }}>
         {data.description}
       </div>
     )}

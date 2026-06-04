@@ -2,8 +2,8 @@ import { Edge, MarkerType } from 'reactflow'
 import { YamlEdge, EdgeStyle } from './types'
 
 const LABEL_STYLE = {
-  labelStyle: { fill: '#94a3b8', fontSize: 11 },
-  labelBgStyle: { fill: '#1e2235', fillOpacity: 0.85 },
+  labelStyle: { fill: 'var(--muted)', fontSize: 11 },
+  labelBgStyle: { fill: 'var(--surface2)', fillOpacity: 0.85 },
 }
 
 const BIDIR_COLOR = '#06b6d4'  // cyan-500 — reserved for bidirectional edges
@@ -32,8 +32,8 @@ export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partia
     case 'async':
       return {
         ...LABEL_STYLE, markerStart: undefined,
-        style: { stroke: '#64748b', strokeWidth: 1.5, strokeDasharray: '8 4' },
-        markerEnd: marker('#64748b'),
+        style: { stroke: 'var(--subtle)', strokeWidth: 1.5, strokeDasharray: '8 4' },
+        markerEnd: marker('var(--subtle)'),
       }
     case 'event':
       return {
@@ -50,14 +50,14 @@ export function edgeAppearance(style?: EdgeStyle, bidirectional = false): Partia
     case 'depends':
       return {
         ...LABEL_STYLE, markerStart: undefined,
-        style: { stroke: '#475569', strokeWidth: 1.5, strokeDasharray: '3 5' },
-        markerEnd: marker('#475569'),
+        style: { stroke: 'var(--faint)', strokeWidth: 1.5, strokeDasharray: '3 5' },
+        markerEnd: marker('var(--faint)'),
       }
     default:
       return {
         ...LABEL_STYLE, markerStart: undefined,
-        style: { stroke: '#475569', strokeWidth: 1.5 },
-        markerEnd: marker('#475569'),
+        style: { stroke: 'var(--faint)', strokeWidth: 1.5 },
+        markerEnd: marker('var(--faint)'),
       }
   }
 }

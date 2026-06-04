@@ -1,0 +1,39 @@
+/* ── Archdom colour tokens ─────────────────────────────────────────────────── */
+/* Dark is the default (no data-theme needed). Light overrides via [data-theme="light"]. */
+
+:root {
+  --bg:              #0f1117;
+  --surface:         #1a1d27;
+  --code:            #fca5a5;   /* rose-200 — code text on dark bg     */
+  --surface2:        #1e2235;
+  --border:          #2d3148;
+  --text:            #e2e8f0;
+  --muted:           #94a3b8;
+  --subtle:          #64748b;
+  --faint:           #475569;
+  --surface-overlay: rgba(26,29,39,0.88);
+  --hint-bg:         rgba(26,29,39,0.85);
+  --backdrop-heavy:  rgba(26,29,39,0.9);
+  --minimap-mask:    rgba(15,17,23,0.7);
+}
+
+[data-theme="light"] {
+  --bg:              #f1f5f9;
+  --code:            #be123c;   /* rose-700 — code text on light bg    */
+  --surface:         #ffffff;
+  --surface2:        #f8fafc;
+  --border:          #e2e8f0;
+  --text:            #0f172a;
+  --muted:           #475569;
+  --subtle:          #64748b;
+  --faint:           #94a3b8;
+  --surface-overlay: rgba(255,255,255,0.88);
+  --hint-bg:         rgba(248,250,252,0.9);
+  --backdrop-heavy:  rgba(255,255,255,0.95);
+  --minimap-mask:    rgba(241,245,249,0.7);
+}
+
+/* Smooth cross-fade on theme switch */
+* { transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease; }
+/* Don't transition SVG/canvas geometry — only colour */
+svg *, canvas { transition: none; }

@@ -54,15 +54,15 @@ export function MetaSection({ state, loading, onChange }: Props) {
     onChange({ ...state, links: state.links.map((l, j) => j === i ? { ...l, [field]: v } : l) })
 
   return (
-    <div style={{ borderTop: '1px solid #2d3148', paddingTop: 12 }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8', cursor: 'pointer' }}>
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
         <input type="checkbox" checked={state.enabled} onChange={e => set('enabled', e.target.checked)} />
         Metadata file
       </label>
 
       {state.enabled && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {loading && <div style={{ fontSize: 12, color: '#475569' }}>Loading existing metadata…</div>}
+          {loading && <div style={{ fontSize: 12, color: 'var(--faint)' }}>Loading existing metadata…</div>}
 
           <MF label="File path">
             <input
@@ -71,7 +71,7 @@ export function MetaSection({ state, loading, onChange }: Props) {
               onChange={e => set('filePath', e.target.value)}
               placeholder="meta/my-node.yaml"
             />
-            <span style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Created / updated on save</span>
+            <span style={{ fontSize: 11, color: 'var(--faint)', marginTop: 2 }}>Created / updated on save</span>
           </MF>
 
           <MF label="Title">
@@ -118,14 +118,14 @@ export function MetaSection({ state, loading, onChange }: Props) {
                 <button
                   type="button"
                   onClick={() => onChange({ ...state, links: state.links.filter((_, j) => j !== i) })}
-                  style={{ background: 'none', border: '1px solid #2d3148', borderRadius: 6, color: '#64748b', cursor: 'pointer', padding: '0 8px', fontSize: 14 }}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--subtle)', cursor: 'pointer', padding: '0 8px', fontSize: 14 }}
                 >×</button>
               </div>
             ))}
             <button
               type="button"
               onClick={() => onChange({ ...state, links: [...state.links, { label: '', url: '' }] })}
-              style={{ background: 'transparent', border: '1px dashed #2d3148', borderRadius: 6, color: '#475569', cursor: 'pointer', fontSize: 12, padding: '4px 10px', marginTop: 2 }}
+              style={{ background: 'transparent', border: '1px dashed var(--border)', borderRadius: 6, color: 'var(--faint)', cursor: 'pointer', fontSize: 12, padding: '4px 10px', marginTop: 2 }}
             >+ Add link</button>
           </div>
         </div>
@@ -144,12 +144,12 @@ function MF({ label, children }: { label: string; children: React.ReactNode }) {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 600, color: '#64748b',
+  fontSize: 11, fontWeight: 600, color: 'var(--subtle)',
   textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2,
 }
 
 const inp: React.CSSProperties = {
-  background: '#0f1117', border: '1px solid #2d3148', borderRadius: 6,
-  color: '#e2e8f0', fontSize: 13, padding: '7px 10px', width: '100%',
+  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+  color: 'var(--text)', fontSize: 13, padding: '7px 10px', width: '100%',
   outline: 'none', boxSizing: 'border-box',
 }
