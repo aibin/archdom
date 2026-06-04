@@ -258,7 +258,7 @@ export const RectNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
   return (
     <div style={{
       width: 220,
-      background: isBoundary ? 'rgba(30,34,53,0.55)' : 'var(--surface2)',
+      background: isBoundary ? 'var(--boundary-bg)' : 'var(--surface2)',
       border: `2px ${isBoundary ? 'dashed' : 'solid'} ${color}`,
       borderRadius: 8, overflow: 'hidden',
       cursor: data.file ? 'pointer' : 'default',
@@ -323,7 +323,7 @@ export const CylinderNode = memo(({ id, data }: NodeProps<C4NodeData>) => {
 
       <div style={{
         height: 22, borderRadius: '50%',
-        background: '#161924',
+        background: 'var(--bg)',
         border: `2px solid ${color}`,
         position: 'relative', zIndex: 1,
       }} />

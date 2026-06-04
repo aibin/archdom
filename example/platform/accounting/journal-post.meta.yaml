@@ -1,12 +1,10 @@
 title: POST /journal-entries
-owner: Finance Platform Team
-status: active
-protocol: REST (JSON) + gRPC (Protobuf)
-auth: mTLS + JWT (service-to-service)
-description: |
+description: |-
   Accepts double-entry journal entries from the Ledger API and commits them
   atomically. Enforces the debit = credit invariant before any write lands.
   Idempotency key required on all writes to prevent duplicate posting.
+owner: Finance Platform Team
+status: active
 links:
   - label: API Contract
     url: https://docs.example.com/ledger-api/openapi#tag/Journal

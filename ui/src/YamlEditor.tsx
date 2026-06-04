@@ -118,7 +118,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     outline: 'none',
     background: 'var(--bg)',
-    color: 'var(--code)',
+    color: 'var(--text)',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: 12,
     lineHeight: 1.65,

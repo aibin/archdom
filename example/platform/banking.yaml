@@ -126,10 +126,6 @@ edges:
     label: Read user rules
     style: sync
   - from: rule-engine
-    to: ops-db
-    label: Store categorised transactions
-    style: sync
-  - from: rule-engine
     to: accounting-svc
     label: Post as journal entries
     technology: gRPC

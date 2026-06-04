@@ -2,167 +2,160 @@ name: Production Deployment
 diagramType: deployment
 scope: FinLedger Platform
 environment: Production — AWS us-east-1
-
 nodes:
   - id: cloudfront
     name: CloudFront CDN
     description: Global edge delivery for the React SPA and static assets
     technology: AWS CloudFront
     type: infrastructure-node
-
   - id: waf
     name: Web Application Firewall
     description: DDoS protection and OWASP rule set
     technology: AWS WAF
     type: infrastructure-node
-
   - id: alb
     name: Application Load Balancer
     description: HTTPS termination and routing to ECS services
     technology: AWS ALB
     type: infrastructure-node
-
   - id: ecs-cluster
     name: ECS Cluster
     description: Containerised services on Fargate — no EC2 to manage
     technology: AWS ECS Fargate
     type: deployment-node
-
   - id: api-gateway-task
     name: Kong Gateway Tasks
     description: Rate limiting, JWT validation, routing — auto-scaled 2–10 tasks
     technology: Kong 3.x on Fargate
     type: server-app
-
   - id: core-tasks
     name: Domain Service Tasks
     description: Accounting, Invoicing, Payroll, Banking — each independently scaled
     technology: Python / Node.js on Fargate
     type: service
-
   - id: rds-cluster
     name: RDS Aurora Cluster
     description: Multi-AZ Aurora PostgreSQL — primary + 2 read replicas
     technology: Aurora PostgreSQL 15
     type: deployment-node
-
   - id: ledger-db
     name: Ledger DB (Primary)
     description: Append-only journal — partitioned by year, PITR enabled
     technology: PostgreSQL 15
     type: db
-
   - id: ops-db
     name: Operational DB (Primary)
     description: Invoices, payroll, contacts — daily snapshots to S3
     technology: PostgreSQL 15
     type: db
-
   - id: elasticache
     name: ElastiCache Cluster
     description: Redis 7 cluster mode — 3 shards, 2 replicas each
     technology: AWS ElastiCache
     type: deployment-node
-
   - id: cache
     name: Redis Cache
     description: Sessions, rate limits, balance cache, distributed locks
     technology: Redis 7
     type: db
-
   - id: msk
     name: MSK Cluster
     description: Managed Kafka — 3 brokers, multi-AZ, 7-day retention
     technology: AWS MSK 3.5
     type: deployment-node
-
   - id: opensearch
     name: OpenSearch Cluster
     description: 3-node cluster for transaction and invoice full-text search
     technology: AWS OpenSearch 2.x
     type: deployment-node
-
   - id: timescaledb
     name: TimescaleDB
     description: Financial metrics time-series — 90-day hot storage, S3 tiering
     technology: TimescaleDB on EC2
     type: db
-
   - id: s3-docs
     name: Document Store
     description: Generated PDFs, receipts, attachments — versioned, encrypted
     technology: AWS S3 (SSE-KMS)
     type: s3
-
   - id: s3-backups
     name: Backup Store
     description: RDS snapshots, MSK offloads, audit archives — 7-year retention
     technology: AWS S3 Glacier IR
     type: s3
-
   - id: secrets-manager
     name: Secrets Manager
     description: API keys, DB credentials, JWT signing keys — auto-rotated
     technology: AWS Secrets Manager
     type: infrastructure-node
-
   - id: vpc
     name: VPC
     description: Isolated network — public, private, and data subnets across 3 AZs
     technology: AWS VPC
     type: deployment-node
-
 edges:
   - from: cloudfront
     to: waf
     label: All traffic
     style: sync
+    sourceAnchor: bottom
   - from: waf
     to: alb
     label: Filtered requests
     style: sync
+    sourceAnchor: bottom
   - from: alb
     to: ecs-cluster
     label: Route to services
     style: sync
+    sourceAnchor: bottom
   - from: ecs-cluster
     to: api-gateway-task
     label: Hosts
     style: depends
+    sourceAnchor: bottom
   - from: ecs-cluster
     to: core-tasks
     label: Hosts
     style: depends
+    sourceAnchor: bottom
   - from: api-gateway-task
     to: core-tasks
     label: Internal routing
     technology: HTTP
     style: sync
+    sourceAnchor: bottom
   - from: core-tasks
     to: rds-cluster
     label: SQL / TLS
     style: sync
+    sourceAnchor: bottom
   - from: rds-cluster
     to: ledger-db
     label: Hosts primary
     style: depends
+    sourceAnchor: bottom
   - from: rds-cluster
     to: ops-db
     label: Hosts primary
     style: depends
+    sourceAnchor: bottom
   - from: core-tasks
     to: elasticache
     label: Redis protocol / TLS
     style: sync
+    sourceAnchor: bottom
   - from: elasticache
     to: cache
     label: Hosts shards
     style: depends
+    sourceAnchor: bottom
   - from: core-tasks
     to: msk
     label: Produce / consume
     technology: Kafka protocol
     style: event
+    sourceAnchor: bottom
   - from: core-tasks
     to: opensearch
     label: Index & search
@@ -171,19 +164,24 @@ edges:
     to: timescaledb
     label: Write metrics
     style: async
+    sourceAnchor: bottom
   - from: core-tasks
     to: s3-docs
     label: Store documents
     style: async
+    sourceAnchor: bottom
   - from: core-tasks
     to: secrets-manager
     label: Fetch secrets at startup
     style: depends
+    sourceAnchor: bottom
   - from: ecs-cluster
     to: vpc
     label: Runs inside
     style: depends
+    sourceAnchor: bottom
   - from: rds-cluster
     to: s3-backups
     label: Automated snapshots
     style: async
+    sourceAnchor: bottom

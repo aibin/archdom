@@ -1,158 +1,122 @@
 name: FinLedger Platform
 diagramType: container
 scope: FinLedger Platform
-
+theme:
+  service: '#ff0000'
 nodes:
-  # ── Client applications ───────────────────────────────────────────────────
   - id: web
     name: Web Application
     description: Full-featured accounting and finance dashboard
     technology: React 18 + TypeScript
     type: spa
-
   - id: mobile
     name: Mobile App
     description: Expense capture, invoice approval, payslip viewer
     technology: React Native
     type: spa
-
-  # ── Gateway ───────────────────────────────────────────────────────────────
   - id: gateway
     name: API Gateway
     description: TLS termination, rate limiting, JWT validation, routing
     technology: Kong Gateway
     type: infrastructure-node
-
-  # ── Auth ─────────────────────────────────────────────────────────────────
   - id: auth
     name: Auth Service
     description: JWT issuance, OAuth2, MFA, SSO, session management
     technology: Python / FastAPI
-    type: server-app
-
-  # ── Core domain services ──────────────────────────────────────────────────
+    type: service
   - id: accounting
     name: Accounting Service
     description: Double-entry ledger, chart of accounts, period close
     technology: Python / FastAPI
-    type: container
+    type: service
     file: platform/accounting.yaml
-
   - id: invoicing
     name: Invoicing Service
     description: Invoice lifecycle — creation, delivery, tracking, reminders
     technology: Node.js / Express
-    type: container
+    type: service
     file: platform/invoicing.yaml
-
   - id: payroll
     name: Payroll Service
     description: Payroll runs, tax withholding, benefits, direct deposit
     technology: Python / FastAPI
-    type: container
-    file: platform/payroll.yaml
+    type: service
     link: https://google.com
-
   - id: banking
     name: Banking Integration
     description: Open Banking connections, transaction sync, enrichment
     technology: Python / Celery
     type: container
-    file: platform/banking.yaml
-
   - id: tax
     name: Tax Service
     description: Tax calculation, form generation, IRS e-filing
     technology: Python
-    type: container
-
+    type: service
   - id: reporting
     name: Reporting Service
     description: P&L, balance sheet, cash flow, ageing, custom reports
     technology: Python / Pandas
-    type: container
-
+    type: service
   - id: payments
     name: Payment Service
     description: Invoice payment processing, refunds, reconciliation
     technology: Node.js
-    type: container
-
+    type: service
   - id: documents
     name: Document Service
     description: PDF generation for invoices, receipts, payslips, tax forms
     technology: Python / WeasyPrint
-    type: container
-
+    type: service
   - id: notifications
     name: Notification Service
     description: Routes alerts via email, SMS, and in-app push
     technology: Python
     type: container
-
   - id: audit
     name: Audit Service
     description: Immutable audit trail for every financial event
     technology: Python
-    type: container
-
-  # ── Supporting infrastructure ──────────────────────────────────────────────
+    type: service
   - id: job-queue
     name: Job Scheduler
     description: Recurring payroll runs, report generation, bank syncs
     technology: Celery + Redis
     type: container
-
   - id: bus
     name: Event Bus
     description: Async domain event backbone
     technology: Apache Kafka
     type: container
-
-  # ── Data stores ───────────────────────────────────────────────────────────
   - id: auth-db
     name: Auth DB
     description: Identities, sessions, OAuth tokens, MFA secrets
     technology: PostgreSQL
     type: db
-
   - id: ledger-db
     name: Ledger DB
     description: Append-only double-entry journal — partitioned by year
     technology: PostgreSQL (partitioned)
     type: db
-
   - id: ops-db
     name: Operational DB
     description: Invoices, contacts, payroll runs, settings, attachments metadata
     technology: PostgreSQL
     type: db
-
   - id: timeseries-db
     name: Metrics DB
     description: Aggregated financial metrics powering dashboards
     technology: TimescaleDB
     type: db
-
   - id: cache
     name: Cache
     description: Sessions, rate-limit counters, report snapshots, locks
     technology: Redis Cluster
     type: db
-
-  - id: search
-    name: Search Index
-    description: Full-text search over transactions, contacts, invoices
-    technology: Elasticsearch
-    type: db
-
   - id: doc-store
     name: Document Store
     description: PDFs, receipts, attachments, tax forms
     technology: AWS S3
     type: s3
-
-  # ── External dependencies at container level ──────────────────────────────
   - id: stripe
     name: Stripe
     description: Card and ACH payment processing
@@ -160,7 +124,6 @@ nodes:
     type: software-system
     external: true
     link: https://stripe.com/docs/api
-
   - id: plaid
     name: Plaid
     description: Bank account linkage and transaction feeds
@@ -168,59 +131,62 @@ nodes:
     type: software-system
     external: true
     link: https://plaid.com/docs/api
-
-  # ── Drillable supporting diagrams ─────────────────────────────────────────
   - id: invoice-flow
     name: Invoice Payment Flow
     description: Dynamic view — what happens when a customer pays an invoice
     type: boundary
     file: platform/invoice-payment-flow.yaml
-
   - id: payroll-flow
     name: Payroll Run Flow
     description: Dynamic view — end-to-end payroll run sequence
     type: boundary
     file: platform/payroll-run-flow.yaml
-
   - id: infra
     name: Production Deployment
     description: AWS infrastructure and deployment topology
     type: deployment-node
     file: platform/deployment.yaml
-
 edges:
   - from: web
     to: gateway
     label: HTTPS / REST
     style: sync
+    sourceAnchor: bottom
   - from: mobile
     to: gateway
     label: HTTPS / REST
     style: sync
+    sourceAnchor: bottom
   - from: gateway
     to: auth
     label: Validate JWT
     style: depends
+    sourceAnchor: right
   - from: gateway
     to: accounting
     label: Ledger requests
     style: sync
+    sourceAnchor: left
   - from: gateway
     to: invoicing
     label: Invoice requests
     style: sync
+    sourceAnchor: bottom
   - from: gateway
     to: payroll
     label: Payroll requests
     style: sync
+    sourceAnchor: left
   - from: gateway
     to: reporting
     label: Report requests
     style: sync
+    sourceAnchor: left
   - from: gateway
     to: banking
     label: Banking requests
     style: sync
+    sourceAnchor: left
   - from: auth
     to: auth-db
     label: Identities & tokens
@@ -235,6 +201,7 @@ edges:
     to: ledger-db
     label: Append journal entries
     style: sync
+    sourceAnchor: left
   - from: accounting
     to: cache
     label: Account balance cache
@@ -244,15 +211,18 @@ edges:
     to: bus
     label: Ledger events
     style: event
+    sourceAnchor: left
   - from: invoicing
     to: ops-db
     label: Invoice records
     style: sync
+    sourceAnchor: left
   - from: invoicing
     to: payments
     label: Initiate payment
     technology: gRPC
     style: sync
+    sourceAnchor: right
   - from: invoicing
     to: documents
     label: Generate invoice PDF
@@ -262,23 +232,28 @@ edges:
     to: bus
     label: Invoice events
     style: event
+    sourceAnchor: left
   - from: payroll
     to: ops-db
     label: Payroll run records
     style: sync
+    sourceAnchor: bottom
   - from: payroll
     to: accounting
     label: Post payroll entries
     technology: gRPC
     style: sync
+    sourceAnchor: right
   - from: payroll
     to: documents
     label: Generate payslips
     style: async
+    sourceAnchor: right
   - from: payroll
     to: bus
     label: Payroll events
     style: event
+    sourceAnchor: left
   - from: banking
     to: plaid
     label: Fetch transactions
@@ -294,6 +269,7 @@ edges:
     to: ops-db
     label: Connection state
     style: sync
+    sourceAnchor: right
   - from: banking
     to: bus
     label: Bank sync events
@@ -303,14 +279,17 @@ edges:
     to: ledger-db
     label: Read journals
     style: sync
+    sourceAnchor: bottom
   - from: tax
     to: ops-db
     label: Tax filing records
     style: sync
+    sourceAnchor: right
   - from: reporting
     to: ledger-db
     label: Aggregate journals
     style: sync
+    sourceAnchor: bottom
   - from: reporting
     to: timeseries-db
     label: Store metric snapshots
@@ -321,8 +300,8 @@ edges:
     label: Charge / refund
     technology: HTTPS
     style: sync
-    sourceAnchor: bottom
     bidirectional: true
+    sourceAnchor: bottom
   - from: payments
     to: accounting
     label: Post payment entries
@@ -343,14 +322,12 @@ edges:
     to: bus
     label: Consume all events
     style: depends
+    sourceAnchor: bottom
   - from: audit
     to: ledger-db
     label: Append audit entries
     style: sync
-  - from: search
-    to: ledger-db
-    label: Index transactions
-    style: depends
+    sourceAnchor: bottom
   - from: job-queue
     to: payroll
     label: Trigger scheduled runs
@@ -370,3 +347,8 @@ edges:
     label: Fan-out events
     style: event
     sourceAnchor: bottom
+  - from: stripe
+    to: payments
+    style: webhook
+    sourceAnchor: right
+    targetAnchor: right
