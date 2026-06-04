@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react'
-import { EdgeStyle, YamlEdge } from './types'
+import { EdgeStyle, EdgeAnchor, YamlEdge } from './types'
+
+const ANCHOR_OPTIONS: { value: '' | EdgeAnchor; label: string }[] = [
+  { value: '',       label: 'Auto' },
+  { value: 'top',    label: '↑'    },
+  { value: 'bottom', label: '↓'    },
+  { value: 'left',   label: '←'    },
+  { value: 'right',  label: '→'    },
+]
 import { MetaSection, MetaSectionState, initialMetaState, applyMetaFile, collectMeta } from './MetaSection'
 import { loadMetaFile, saveMetaFile } from './yamlLoader'
 
@@ -28,11 +36,13 @@ function yamlDir(yamlPath: string): string {
 
 export function EdgeForm({ source, target, currentYamlPath, initialData, errorMsg, onSave, onCancel, onDelete }: Props) {
   const isEditing = !!(initialData?.style || initialData?.label || initialData?.technology)
-  const [label,         setLabel]   = useState(initialData?.label ?? '')
-  const [technology,    setTech]    = useState(initialData?.technology ?? '')
-  const [style,         setStyle]   = useState<EdgeStyle>(initialData?.style ?? 'sync')
-  const [bidirectional, setBidir]   = useState(initialData?.bidirectional ?? false)
-  const [step,          setStep]    = useState(initialData?.step != null ? String(initialData.step) : '')
+  const [label,         setLabel]      = useState(initialData?.label ?? '')
+  const [technology,    setTech]       = useState(initialData?.technology ?? '')
+  const [style,         setStyle]      = useState<EdgeStyle>(initialData?.style ?? 'sync')
+  const [bidirectional, setBidir]      = useState(initialData?.bidirectional ?? false)
+  const [step,          setStep]       = useState(initialData?.step != null ? String(initialData.step) : '')
+  const [sourceAnchor,  setSrcAnchor]  = useState<'' | EdgeAnchor>(initialData?.sourceAnchor ?? '')
+  const [targetAnchor,  setTgtAnchor]  = useState<'' | EdgeAnchor>(initialData?.targetAnchor ?? '')
 
   const [meta, setMeta]               = useState<MetaSectionState>(initialMetaState(initialData?.meta))
   const [metaLoading, setMetaLoading] = useState(false)
@@ -67,6 +77,8 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
       bidirectional,  // always emit so unchecking a bidirectional edge is saved correctly
       ...(step.trim() && !isNaN(stepNum) && stepNum > 0 && { step: stepNum }),
       ...(metaResult && { meta: metaResult.path }),
+      ...(sourceAnchor && { sourceAnchor }),
+      ...(targetAnchor && { targetAnchor }),
     })
   }
 
@@ -129,6 +141,11 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
           </div>
         </div>
 
+        <div style={{ display: 'flex', gap: 12 }}>
+          <AnchorPicker label="From anchor" value={sourceAnchor} onChange={setSrcAnchor} />
+          <AnchorPicker label="To anchor"   value={targetAnchor} onChange={setTgtAnchor} />
+        </div>
+
         {/* Metadata section */}
         <MetaSection
           state={meta}
@@ -159,6 +176,33 @@ export function EdgeForm({ source, target, currentYamlPath, initialData, errorMs
           </div>
         </div>
       </form>
+    </div>
+  )
+}
+
+function AnchorPicker({ label, value, onChange }: { label: string; value: '' | EdgeAnchor; onChange: (v: '' | EdgeAnchor) => void }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', marginBottom: 4 }}>{label}</label>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {ANCHOR_OPTIONS.map(o => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            style={{
+              flex: 1, padding: '4px 0', cursor: 'pointer',
+              background:   value === o.value ? '#1e2235' : 'transparent',
+              border:       `1px solid ${value === o.value ? '#7c6af7' : '#2d3148'}`,
+              borderRadius: 6,
+              fontSize:     o.value === '' ? 10 : 13,
+              color:        value === o.value ? '#7c6af7' : '#64748b',
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

@@ -679,11 +679,26 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
 
     if (editingEdge) {
       const editKey = connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor)
+      const newKey  = connectionKey(editingEdge.from, edgeProps.sourceAnchor, editingEdge.to, edgeProps.targetAnchor)
+      // If anchors changed, check the new key doesn't conflict with another edge
+      if (newKey !== editKey) {
+        const conflict = (layer.edges ?? []).find(e =>
+          connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) !== editKey &&
+          connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === newKey
+        )
+        if (conflict) {
+          const fromLabel = `${editingEdge.from}${edgeProps.sourceAnchor ? `(${edgeProps.sourceAnchor})` : ''}`
+          const toLabel   = `${editingEdge.to}${edgeProps.targetAnchor   ? `(${edgeProps.targetAnchor})`   : ''}`
+          setEdgeConflictError(`"${fromLabel} → ${toLabel}" duplicates an existing connection.`)
+          return
+        }
+      }
+      setEdgeConflictError(null)
       newLayer = {
         ...layer,
         edges: (layer.edges ?? []).map(e =>
           connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === editKey
-            ? { from: e.from, to: e.to, ...(e.sourceAnchor && { sourceAnchor: e.sourceAnchor }), ...(e.targetAnchor && { targetAnchor: e.targetAnchor }), ...edgeProps, bidirectional: edgeProps.bidirectional || undefined } as YamlEdge
+            ? { from: e.from, to: e.to, ...edgeProps, bidirectional: edgeProps.bidirectional || undefined } as YamlEdge
             : e
         ),
       }
@@ -694,41 +709,38 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         // Rebuild from scratch so no stale visual properties (e.g. markerStart) survive from ...e
         return {
           id: e.id, source: e.source, target: e.target,
-          ...(e.sourceHandle && { sourceHandle: e.sourceHandle }),
-          ...(e.targetHandle && { targetHandle: e.targetHandle }),
-          ...(e.type         && { type: e.type }),
-          ...(e.zIndex != null && { zIndex: e.zIndex }),
+          ...(edgeProps.sourceAnchor && { sourceHandle: edgeProps.sourceAnchor }),
+          ...(edgeProps.targetAnchor && { targetHandle: edgeProps.targetAnchor }),
+          ...(e.type                 && { type: e.type }),
+          ...(e.zIndex != null       && { zIndex: e.zIndex }),
           label: edgeLabel(ye),
           ...edgeAppearance(ye.style, ye.bidirectional ?? false),
-          data: { ...d, meta: ye.meta },
+          data: { ...d, meta: ye.meta, yamlSourceAnchor: edgeProps.sourceAnchor, yamlTargetAnchor: edgeProps.targetAnchor },
         }
       }))
       setEditingEdge(null)
     } else if (pendingEdge) {
-      const { source, target, sourceHandle, targetHandle } = pendingEdge
-      const key = connectionKey(source, sourceHandle ?? undefined, target, targetHandle ?? undefined)
+      const { source, target } = pendingEdge
+      // Use edgeProps anchors (form values) as the authoritative source — they're pre-filled from the drag handle
+      const key = connectionKey(source, edgeProps.sourceAnchor, target, edgeProps.targetAnchor)
       const conflict = (layer.edges ?? []).find(e => e.from !== e.to && connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === key)
       if (conflict) {
-        const fromLabel = `${source}${sourceHandle ? `(${sourceHandle})` : ''}`
-        const toLabel   = `${target}${targetHandle ? `(${targetHandle})` : ''}`
+        const fromLabel = `${source}${edgeProps.sourceAnchor ? `(${edgeProps.sourceAnchor})` : ''}`
+        const toLabel   = `${target}${edgeProps.targetAnchor ? `(${edgeProps.targetAnchor})` : ''}`
         setEdgeConflictError(`"${fromLabel} → ${toLabel}" duplicates an existing connection. Remove one or use bidirectional: true.`)
         return
       }
       setEdgeConflictError(null)
-      const anchorProps: Partial<YamlEdge> = {
-        ...(sourceHandle && { sourceAnchor: sourceHandle as YamlEdge['sourceAnchor'] }),
-        ...(targetHandle && { targetAnchor: targetHandle as YamlEdge['targetAnchor'] }),
-      }
-      const newYamlEdge: YamlEdge = { from: source, to: target, ...anchorProps, ...edgeProps }
+      const newYamlEdge: YamlEdge = { from: source, to: target, ...edgeProps, bidirectional: edgeProps.bidirectional || undefined }
       newLayer = { ...layer, edges: [...(layer.edges ?? []), newYamlEdge] }
       const newFlowEdge: Edge = {
         id: `e-${Date.now()}`,
         source: newYamlEdge.from, target: newYamlEdge.to,
         label: edgeLabel(newYamlEdge),
         ...edgeAppearance(newYamlEdge.style, newYamlEdge.bidirectional ?? false),
-        ...(sourceHandle && { sourceHandle }),
-        ...(targetHandle && { targetHandle }),
-        data: { meta: newYamlEdge.meta, yamlFrom: newYamlEdge.from, yamlTo: newYamlEdge.to, yamlSourceAnchor: newYamlEdge.sourceAnchor, yamlTargetAnchor: newYamlEdge.targetAnchor },
+        ...(edgeProps.sourceAnchor && { sourceHandle: edgeProps.sourceAnchor }),
+        ...(edgeProps.targetAnchor && { targetHandle: edgeProps.targetAnchor }),
+        data: { meta: newYamlEdge.meta, yamlFrom: newYamlEdge.from, yamlTo: newYamlEdge.to, yamlSourceAnchor: edgeProps.sourceAnchor, yamlTargetAnchor: edgeProps.targetAnchor },
       }
       setEdges(prev => [...prev, newFlowEdge])
       setPendingEdge(null)
@@ -954,7 +966,10 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
           source={pendingEdge?.source ?? editingEdge?.from ?? ''}
           target={pendingEdge?.target ?? editingEdge?.to ?? ''}
           currentYamlPath={yamlPath}
-          initialData={editingEdge ? (layer?.edges ?? []).find(e => connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor)) : undefined}
+          initialData={editingEdge
+            ? (layer?.edges ?? []).find(e => connectionKey(e.from, e.sourceAnchor, e.to, e.targetAnchor) === connectionKey(editingEdge.from, editingEdge.sourceAnchor, editingEdge.to, editingEdge.targetAnchor))
+            : { ...(pendingEdge?.sourceHandle && { sourceAnchor: pendingEdge.sourceHandle as YamlEdge['sourceAnchor'] }), ...(pendingEdge?.targetHandle && { targetAnchor: pendingEdge.targetHandle as YamlEdge['targetAnchor'] }) }
+          }
           errorMsg={edgeConflictError ?? undefined}
           onSave={handleEdgeFormSave}
           onCancel={() => { setPendingEdge(null); setEditingEdge(null); setEdgeConflictError(null) }}
