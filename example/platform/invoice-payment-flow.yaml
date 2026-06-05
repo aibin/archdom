@@ -62,6 +62,8 @@ edges:
     technology: HTTPS
     style: sync
     step: 2
+    sourceAnchor: bottom
+    targetAnchor: top
   - from: gateway
     to: invoicing
     label: Validate token & fetch invoice
