@@ -28,6 +28,7 @@ import { edgeAppearance, edgeLabel } from './diagramUtils'
 import { NodePalette } from './NodePalette'
 import { NodeForm } from './NodeForm'
 import { EdgeForm } from './EdgeForm'
+import { StepPlayer } from './StepPlayer'
 import { useTheme } from './useTheme'
 
 // ── Diagram type badge ────────────────────────────────────────────────────────
@@ -266,7 +267,7 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
       label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),
       ...(e.sourceAnchor && { sourceHandle: srcHandle(e.sourceAnchor) }),
       ...(e.targetAnchor && { targetHandle: tgtHandle(e.targetAnchor) }),
-      data: { meta: e.meta, yamlFrom: e.from, yamlTo: e.to, yamlSourceAnchor: e.sourceAnchor, yamlTargetAnchor: e.targetAnchor },
+      data: { meta: e.meta, step: e.step, yamlFrom: e.from, yamlTo: e.to, yamlSourceAnchor: e.sourceAnchor, yamlTargetAnchor: e.targetAnchor },
     }))
 
   return { nodes: flowNodes, edges }
@@ -297,6 +298,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [legendOpen, setLegendOpen] = useState(false)
+  const [activeStep, setActiveStep] = useState<number | null>(null)
   const [exporting, setExporting]   = useState(false)
 
   type MetaState = { path: string; title: string; loading: boolean; data: MetaFile | null; error: string | null }
@@ -366,8 +368,26 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     setHighlightId(searchParamsRef.current.get('node'))
     setSearchQuery('')
     setEditorSaveStatus('idle')
+    setActiveStep(null)
     loadAndLayout(yamlPath)
   }, [yamlPath, loadAndLayout, refreshToken])
+
+  // ── Step player: derived data ──────────────────────────────────────────────
+  const isDynamic = layer?.diagramType === 'dynamic'
+  const playerSteps = useMemo(() => {
+    if (!isDynamic) return []
+    const nums = (layer?.edges ?? []).map(e => e.step).filter((s): s is number => s != null)
+    return [...new Set(nums)].sort((a, b) => a - b)
+  }, [isDynamic, layer?.edges])
+
+  const playerStepLabel = useMemo(() => {
+    if (activeStep == null) return ''
+    const parts = (layer?.edges ?? [])
+      .filter(e => e.step === activeStep)
+      .map(e => e.label || e.technology || '')
+      .filter(Boolean)
+    return parts.join(' · ')
+  }, [activeStep, layer?.edges])
 
   // ── Sync highlight → ?node= URL param ────────────────────────────────────
   useEffect(() => {
@@ -444,9 +464,22 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
   const [displayNodes, displayEdges] = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
 
+    // Step player takes priority over node highlight
+    const stepActiveEdgeIds = new Set<string>()
+    const stepActiveNodeIds = new Set<string>()
+    if (activeStep != null) {
+      edges.forEach(e => {
+        if (e.data?.step === activeStep) {
+          stepActiveEdgeIds.add(e.id)
+          stepActiveNodeIds.add(e.source)
+          stepActiveNodeIds.add(e.target)
+        }
+      })
+    }
+
     const linkedEdgeIds = new Set<string>()
     const linked = new Set<string>()
-    if (highlightId) {
+    if (activeStep == null && highlightId) {
       linked.add(highlightId)
       edges.forEach(e => {
         if (e.source === highlightId || e.target === highlightId) {
@@ -462,7 +495,9 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       if (n.type === 'group') return { ...n, data: { ...n.data, onHighlight: handleHighlight, onInfo: handleShowMeta } }
 
       let opacity = 1
-      if (highlightId) {
+      if (activeStep != null) {
+        opacity = stepActiveNodeIds.has(n.id) ? 1 : 0.12
+      } else if (highlightId) {
         opacity = linked.has(n.id) ? 1 : 0.12
       } else if (q) {
         const text = `${n.data.name} ${n.data.description}`.toLowerCase()
@@ -475,17 +510,27 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
       }
     })
 
-    const mappedEdges = (highlightId
+    const baseEdges = activeStep != null
       ? edges.map(e => {
-          const active = linkedEdgeIds.has(e.id)
+          const active = stepActiveEdgeIds.has(e.id)
           return {
             ...e,
             label: active ? e.label : undefined,
             style: { ...(e.style as object), opacity: active ? 1 : 0.06 },
           }
         })
-      : edges
-    ).map(e => {
+      : highlightId
+        ? edges.map(e => {
+            const active = linkedEdgeIds.has(e.id)
+            return {
+              ...e,
+              label: active ? e.label : undefined,
+              style: { ...(e.style as object), opacity: active ? 1 : 0.06 },
+            }
+          })
+        : edges
+
+    const mappedEdges = baseEdges.map(e => {
       if (e.id !== selectedEdgeId) return e
       return {
         ...e,
@@ -497,7 +542,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     })
 
     return [mappedNodes, mappedEdges]
-  }, [nodes, edges, highlightId, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta])
+  }, [nodes, edges, highlightId, activeStep, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta])
 
   // ── Node drag → auto-save positions ───────────────────────────────────────
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -935,6 +980,17 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
           error={metaOverlay.error}
           meta={metaOverlay.data}
           onClose={() => setMetaOverlay(null)}
+        />
+      )}
+
+      {/* Step player — dynamic diagrams only */}
+      {isDynamic && playerSteps.length > 0 && (
+        <StepPlayer
+          steps={playerSteps}
+          currentStep={activeStep}
+          stepLabel={playerStepLabel}
+          onStep={setActiveStep}
+          onClose={() => setActiveStep(null)}
         />
       )}
 

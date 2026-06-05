@@ -69,17 +69,22 @@ edges:
     style: sync
     step: 1
     sourceAnchor: bottom
+    targetAnchor: top
   - from: web
     to: gateway
     label: POST /payroll/runs
     technology: HTTPS
     style: sync
     step: 2
+    sourceAnchor: bottom
+    targetAnchor: top
   - from: gateway
     to: payroll
     label: Initiate run
     style: sync
     step: 3
+    sourceAnchor: bottom
+    targetAnchor: top
   - from: payroll
     to: tax-engine
     label: Calculate withholdings
@@ -118,6 +123,7 @@ edges:
     style: async
     step: 9
     sourceAnchor: bottom
+    targetAnchor: top
   - from: payroll
     to: documents
     label: Generate payslips
@@ -130,3 +136,4 @@ edges:
     style: async
     step: 11
     sourceAnchor: bottom
+    targetAnchor: top
