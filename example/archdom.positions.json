@@ -273,6 +273,10 @@
     "twilio": {
       "x": 1600,
       "y": 526
+    },
+    "send-invoice-flow": {
+      "x": 1550.3611111111113,
+      "y": 65.66666666666667
     }
   },
   "platform/invoicing.yaml": {

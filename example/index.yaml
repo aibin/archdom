@@ -26,7 +26,7 @@ nodes:
     name: FinLedger Platform
     description: Cloud accounting, invoicing, payroll, banking and tax
     type: software-system
-    file: platform.yaml
+    file: platform/index.yaml
 
   - id: bank
     name: Bank / Financial Institution
@@ -75,6 +75,12 @@ nodes:
     type: software-system
     external: true
     link: https://www.twilio.com/docs
+
+  - id: send-invoice-flow
+    name: Send Invoice Flow
+    description: Dynamic diagram — step through what happens when a business owner sends an invoice
+    type: boundary
+    file: flows/send-invoice-flow.yaml
 
 edges:
   - from: owner

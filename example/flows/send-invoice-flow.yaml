@@ -1,0 +1,99 @@
+name: Send Invoice Flow
+diagramType: dynamic
+scope: Business Owner Sends an Invoice to a Customer
+
+nodes:
+  - id: owner
+    name: Business Owner
+    description: Creates and sends the invoice
+    type: user
+
+  - id: web
+    name: Web Application
+    description: Invoice creation UI
+    technology: React
+    type: spa
+
+  - id: gateway
+    name: API Gateway
+    description: Routes and validates requests
+    technology: Kong
+    type: infrastructure-node
+
+  - id: invoicing
+    name: Invoicing Service
+    description: Creates invoice record and assigns a unique payment token
+    technology: Node.js
+    type: container
+
+  - id: documents
+    name: Document Service
+    description: Renders a branded PDF from the invoice data
+    technology: Python / WeasyPrint
+    type: container
+
+  - id: doc-store
+    name: Document Store
+    description: Persists the generated PDF for retrieval
+    technology: AWS S3
+    type: s3
+
+  - id: notifications
+    name: Notification Service
+    description: Dispatches the invoice email with payment link
+    technology: Python
+    type: container
+
+  - id: customer
+    name: Customer
+    description: Receives the invoice by email
+    type: user
+    external: true
+
+edges:
+  - from: owner
+    to: web
+    label: Fill in invoice details
+    style: sync
+    step: 1
+
+  - from: web
+    to: gateway
+    label: POST /invoices
+    technology: HTTPS
+    style: sync
+    step: 2
+
+  - from: gateway
+    to: invoicing
+    label: Create invoice
+    style: sync
+    step: 3
+
+  - from: invoicing
+    to: documents
+    label: Render PDF
+    technology: gRPC
+    style: async
+    step: 4
+
+  - from: documents
+    to: doc-store
+    label: Store PDF
+    technology: S3 PutObject
+    style: async
+    step: 5
+
+  - from: invoicing
+    to: notifications
+    label: Send invoice email
+    technology: gRPC
+    style: async
+    step: 6
+
+  - from: notifications
+    to: customer
+    label: Invoice email with payment link
+    technology: SendGrid
+    style: async
+    step: 7

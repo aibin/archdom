@@ -181,10 +181,10 @@ function useBreadcrumb(splat: string, refreshToken: number): BreadcrumbItem[] {
           const layer = await loadYaml(yamlPath)
           return { path: urlPath, name: layer.name ?? yamlPath }
         } catch {
-          return { path: urlPath, name: yamlPath }
+          return null
         }
       })
-    ).then(setItems)
+    ).then(results => setItems(results.filter((item): item is BreadcrumbItem => item !== null)))
   }, [splat, refreshToken])
 
   return items
