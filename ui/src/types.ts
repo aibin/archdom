@@ -48,6 +48,7 @@ export interface YamlEdge {
   meta?: string            // path to metadata YAML file
   sourceAnchor?: EdgeAnchor  // which side of the source node the edge departs from
   targetAnchor?: EdgeAnchor  // which side of the target node the edge arrives at
+  labelOffset?: number       // label position along edge 0 (source) – 1 (target), default 0.5
 }
 
 export interface MetaFile {

@@ -19,6 +19,7 @@ import { toPng } from 'html-to-image'
 import dagre from '@dagrejs/dagre'
 import { Link, useSearchParams } from 'react-router-dom'
 import { nodeTypes, getFlowType, getNodeSize } from './nodes/Node'
+import { edgeTypes } from './ArchdomEdge'
 import { C4NodeData, MetaFile, YamlLayer, YamlEdge, YamlNode, DiagramType, YamlGroup } from './types'
 import { loadYaml, loadRawText, saveRawText, saveYamlLayer, createDiagramIfMissing, loadMetaFile, loadPositions, savePositions, clearPositions, NodePositions, yamlCache } from './yamlLoader'
 import { YamlEditor, EditorSaveStatus } from './YamlEditor'
@@ -264,10 +265,11 @@ function applyLayout(layer: YamlLayer, savedPos: NodePositions = {}): { nodes: N
   const edges: Edge[] = (layer.edges ?? [])
     .map((e, i) => ({
       id: `e-${i}`, source: e.from, target: e.to,
+      type: 'archdom',
       label: edgeLabel(e), ...edgeAppearance(e.style, e.bidirectional ?? false),
       ...(e.sourceAnchor && { sourceHandle: srcHandle(e.sourceAnchor) }),
       ...(e.targetAnchor && { targetHandle: tgtHandle(e.targetAnchor) }),
-      data: { meta: e.meta, step: e.step, yamlFrom: e.from, yamlTo: e.to, yamlSourceAnchor: e.sourceAnchor, yamlTargetAnchor: e.targetAnchor },
+      data: { meta: e.meta, step: e.step, labelOffset: e.labelOffset, yamlFrom: e.from, yamlTo: e.to, yamlSourceAnchor: e.sourceAnchor, yamlTargetAnchor: e.targetAnchor },
     }))
 
   return { nodes: flowNodes, edges }
@@ -460,6 +462,25 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     await syncYaml(newLayer)
   }, [layer, yamlPath, setNodes, setEdges, syncYaml])
 
+  // ── Label drag: persist new offset to YAML ───────────────────────────────
+  const handleLabelOffsetChange = useCallback(async (edgeId: string, offset: number) => {
+    if (!layer) return
+    const idx = parseInt(edgeId.slice(2))
+    const yamlEdges = layer.edges ?? []
+    if (idx < 0 || idx >= yamlEdges.length) return
+    const rounded = Math.round(offset * 100) / 100
+    const { labelOffset: _old, ...rest } = yamlEdges[idx]
+    const newEdge = rounded === 0.5 ? rest : { ...rest, labelOffset: rounded }
+    const newEdges = [...yamlEdges]; newEdges[idx] = newEdge
+    const newLayer = { ...layer, edges: newEdges }
+    setLayer(newLayer)
+    setEdges(prev => prev.map(e => e.id === edgeId
+      ? { ...e, data: { ...e.data, labelOffset: rounded === 0.5 ? undefined : rounded } }
+      : e
+    ))
+    await syncYaml(newLayer)
+  }, [layer, setEdges, syncYaml])
+
   // ── Display nodes/edges: highlight + search + inject callbacks ─────────────
   const [displayNodes, displayEdges] = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -531,9 +552,13 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         : edges
 
     const mappedEdges = baseEdges.map(e => {
-      if (e.id !== selectedEdgeId) return e
-      return {
+      const withCallbacks = {
         ...e,
+        data: { ...e.data, editMode, onLabelOffsetChange: handleLabelOffsetChange },
+      }
+      if (e.id !== selectedEdgeId) return withCallbacks
+      return {
+        ...withCallbacks,
         zIndex: 1000,
         style: { ...(e.style as object), stroke: '#ef4444', strokeWidth: 2.5 },
         labelStyle: { fill: '#ef4444', fontSize: 12, fontWeight: 700 },
@@ -542,7 +567,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
     })
 
     return [mappedNodes, mappedEdges]
-  }, [nodes, edges, highlightId, activeStep, selectedEdgeId, searchQuery, handleHighlight, handleShowMeta])
+  }, [nodes, edges, highlightId, activeStep, selectedEdgeId, searchQuery, editMode, handleHighlight, handleShowMeta, handleLabelOffsetChange])
 
   // ── Node drag → auto-save positions ───────────────────────────────────────
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -900,6 +925,7 @@ function FlowCanvas({ yamlPath, onDrillIn, refreshToken, onLayoutSaving, onLayou
         deleteKeyCode={editMode ? 'Backspace' : null}
         nodesDraggable={editMode}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={40}
         minZoom={0.1}

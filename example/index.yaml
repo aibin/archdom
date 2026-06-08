@@ -1,33 +1,27 @@
 name: FinLedger
 diagramType: context
 scope: Small Business Finance Platform
-
 theme:
   software-system: '#4B8BBE'
-
 nodes:
   - id: owner
     name: Business Owneres
     description: Manages books, sends invoices, runs payroll
     type: user
-
   - id: accountant
     name: Accountant / Bookkeeper
     description: Reconciles accounts and prepares tax filings
     type: user
-
   - id: employee
     name: Employee
     description: Views payslips and submits expense claims
     type: user
     external: true
-
   - id: finledger
     name: FinLedger Platform
     description: Cloud accounting, invoicing, payroll, banking and tax
     type: software-system
     file: platform/index.yaml
-
   - id: bank
     name: Bank / Financial Institution
     description: Provides real-time transaction feeds via Open Banking
@@ -35,7 +29,6 @@ nodes:
     type: software-system
     external: true
     link: https://plaid.com/docs
-
   - id: stripe
     name: Payment Processor
     description: Accepts card and ACH payments on behalf of merchants
@@ -43,7 +36,6 @@ nodes:
     type: software-system
     external: true
     link: https://stripe.com/docs
-
   - id: payroll-net
     name: Payroll Network
     description: ACH direct deposit and employer payroll tax remittance
@@ -51,7 +43,6 @@ nodes:
     type: software-system
     external: true
     link: https://docs.gusto.com
-
   - id: irs
     name: Tax Authority
     description: Federal and state tax submission via e-File APIs
@@ -59,7 +50,6 @@ nodes:
     type: software-system
     external: true
     link: https://www.irs.gov/e-file-providers/modernized-e-file-mef-internet-filing
-
   - id: sendgrid
     name: Email Provider
     description: Transactional emails — invoices, payslips, alerts
@@ -67,7 +57,6 @@ nodes:
     type: software-system
     external: true
     link: https://docs.sendgrid.com
-
   - id: twilio
     name: SMS Provider
     description: Payment reminders and 2FA codes
@@ -75,19 +64,18 @@ nodes:
     type: software-system
     external: true
     link: https://www.twilio.com/docs
-
   - id: send-invoice-flow
     name: Send Invoice Flow
     description: Dynamic diagram — step through what happens when a business owner sends an invoice
     type: boundary
     file: flows/send-invoice-flow.yaml
-
 edges:
   - from: owner
     to: finledger
     label: Manages finances
     style: sync
     sourceAnchor: bottom
+    labelOffset: 0.19
   - from: accountant
     to: finledger
     label: Reconciles & files taxes
