@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EdgeProps, getBezierPath, EdgeLabelRenderer, BaseEdge, useReactFlow } from 'reactflow'
 
-// Ternary search: finds the t in [0,1] on the path closest to (px, py)
 function closestT(d: string, px: number, py: number): number {
   const el = document.createElementNS('http://www.w3.org/2000/svg', 'path')
   el.setAttribute('d', d)
@@ -26,6 +25,25 @@ function pointAt(d: string, t: number): { x: number; y: number } {
   return { x, y }
 }
 
+function InfoIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={12}
+      height={12}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'block', flexShrink: 0 }}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4m0-4h.01" />
+    </svg>
+  )
+}
+
 export function ArchdomEdge({
   id,
   sourceX, sourceY, targetX, targetY,
@@ -36,8 +54,8 @@ export function ArchdomEdge({
   const { screenToFlowPosition } = useReactFlow()
   const editMode: boolean = data?.editMode ?? false
   const savedOffset: number = data?.labelOffset ?? 0.5
+  const meta: string | undefined = data?.meta
 
-  // Local offset used during drag — cleared once parent syncs the new value
   const [dragOffset, setDragOffset] = useState<number | null>(null)
   const dragging = useRef(false)
 
@@ -82,6 +100,13 @@ export function ArchdomEdge({
     data?.onLabelOffsetChange?.(id, t)
   }
 
+  const showLabel = !!(label || meta)
+
+  const fgColor = (labelStyle as React.CSSProperties & { fill?: string })?.fill ?? 'var(--muted)'
+  const bgColor = (labelBgStyle as React.CSSProperties & { fill?: string })?.fill ?? 'var(--surface2)'
+  const bgOpacity = (labelBgStyle as React.CSSProperties & { fillOpacity?: number })?.fillOpacity ?? 0.9
+  const fontSize = (labelStyle as React.CSSProperties & { fontSize?: number })?.fontSize ?? 11
+
   return (
     <>
       <BaseEdge
@@ -92,7 +117,7 @@ export function ArchdomEdge({
         style={style}
         interactionWidth={interactionWidth}
       />
-      {label && (
+      {showLabel && (
         <EdgeLabelRenderer>
           <div
             className="nodrag nopan"
@@ -105,17 +130,25 @@ export function ArchdomEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: editMode ? 'all' : 'none',
               cursor: editMode ? (dragging.current ? 'grabbing' : 'grab') : 'default',
-              background: (labelBgStyle as React.CSSProperties & { fill?: string })?.fill ?? 'var(--surface2)',
-              opacity: (labelBgStyle as React.CSSProperties & { fillOpacity?: number })?.fillOpacity ?? 0.9,
-              color: (labelStyle as React.CSSProperties & { fill?: string })?.fill ?? 'var(--muted)',
-              fontSize: (labelStyle as React.CSSProperties & { fontSize?: number })?.fontSize ?? 11,
-              padding: '2px 6px',
+              background: bgColor,
+              opacity: bgOpacity,
+              color: fgColor,
+              fontSize,
+              padding: '2px 4px 2px 6px',
               borderRadius: 3,
               userSelect: 'none',
               whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            {label as string}
+            {label && <span>{label as string}</span>}
+            {meta && (
+              <span style={{ display: 'flex', alignItems: 'center', color: fgColor, pointerEvents: 'none' }}>
+                <InfoIcon />
+              </span>
+            )}
           </div>
         </EdgeLabelRenderer>
       )}
