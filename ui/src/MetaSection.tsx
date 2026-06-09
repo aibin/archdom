@@ -1,41 +1,52 @@
 import { MetaFile } from './types'
 
-const STATUS_OPTIONS = ['active', 'stable', 'deprecated', 'planned', 'in-progress', 'beta']
+const RESERVED_KEYS = new Set(['title', 'description', 'links'])
 
 export interface MetaSectionState {
   enabled: boolean
   filePath: string
   title: string
   description: string
-  owner: string
-  status: string
   links: { label: string; url: string }[]
+  customFields: { key: string; value: string }[]
 }
 
 export function initialMetaState(existingPath?: string): MetaSectionState {
-  return { enabled: !!existingPath, filePath: existingPath ?? '', title: '', description: '', owner: '', status: '', links: [] }
+  return {
+    enabled: !!existingPath,
+    filePath: existingPath ?? '',
+    title: '', description: '',
+    links: [],
+    customFields: [],
+  }
 }
 
 export function applyMetaFile(state: MetaSectionState, data: MetaFile): MetaSectionState {
+  const customFields = Object.entries(data)
+    .filter(([k, v]) => !RESERVED_KEYS.has(k) && (typeof v === 'string' || typeof v === 'number'))
+    .map(([k, v]) => ({ key: k, value: String(v) }))
   return {
     ...state,
     title:       data.title       ?? '',
     description: data.description ?? '',
-    owner:       data.owner       ?? '',
-    status:      data.status      ?? '',
-    links:       data.links       ?? [],
+    links:       (data.links as { label: string; url: string }[]) ?? [],
+    customFields,
   }
 }
 
 export function collectMeta(state: MetaSectionState): { path: string; content: MetaFile } | null {
   if (!state.enabled || !state.filePath.trim()) return null
   const validLinks = state.links.filter(l => l.url.trim())
+  const customKV = Object.fromEntries(
+    state.customFields
+      .filter(f => f.key.trim() && f.value.trim())
+      .map(f => [f.key.trim(), f.value.trim()])
+  )
   const content: MetaFile = {
     ...(state.title.trim()       && { title:       state.title.trim() }),
     ...(state.description.trim() && { description: state.description.trim() }),
-    ...(state.owner.trim()       && { owner:       state.owner.trim() }),
-    ...(state.status             && { status:      state.status }),
     ...(validLinks.length        && { links:       validLinks }),
+    ...customKV,
   }
   return { path: state.filePath.trim(), content }
 }
@@ -52,6 +63,9 @@ export function MetaSection({ state, loading, onChange }: Props) {
 
   const setLink = (i: number, field: 'label' | 'url', v: string) =>
     onChange({ ...state, links: state.links.map((l, j) => j === i ? { ...l, [field]: v } : l) })
+
+  const setCustomField = (i: number, field: 'key' | 'value', v: string) =>
+    onChange({ ...state, customFields: state.customFields.map((f, j) => j === i ? { ...f, [field]: v } : f) })
 
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
@@ -88,17 +102,7 @@ export function MetaSection({ state, loading, onChange }: Props) {
             />
           </MF>
 
-          <MF label="Owner">
-            <input style={inp} value={state.owner} onChange={e => set('owner', e.target.value)} placeholder="team / user@example.com" />
-          </MF>
-
-          <MF label="Status">
-            <select style={{ ...inp, cursor: 'pointer' }} value={state.status} onChange={e => set('status', e.target.value)}>
-              <option value="">— none —</option>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </MF>
-
+          {/* Links */}
           <div>
             <div style={labelStyle}>Links</div>
             {state.links.map((lnk, i) => (
@@ -118,15 +122,46 @@ export function MetaSection({ state, loading, onChange }: Props) {
                 <button
                   type="button"
                   onClick={() => onChange({ ...state, links: state.links.filter((_, j) => j !== i) })}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--subtle)', cursor: 'pointer', padding: '0 8px', fontSize: 14 }}
+                  style={removeBtn}
                 >×</button>
               </div>
             ))}
             <button
               type="button"
               onClick={() => onChange({ ...state, links: [...state.links, { label: '', url: '' }] })}
-              style={{ background: 'transparent', border: '1px dashed var(--border)', borderRadius: 6, color: 'var(--faint)', cursor: 'pointer', fontSize: 12, padding: '4px 10px', marginTop: 2 }}
+              style={addBtn}
             >+ Add link</button>
+          </div>
+
+          {/* Custom key-value fields */}
+          <div>
+            <div style={labelStyle}>Properties</div>
+            {state.customFields.map((f, i) => (
+              <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                <input
+                  style={{ ...inp, flex: 1, minWidth: 0 }}
+                  value={f.key}
+                  onChange={e => setCustomField(i, 'key', e.target.value)}
+                  placeholder="Key"
+                />
+                <input
+                  style={{ ...inp, flex: 2, minWidth: 0 }}
+                  value={f.value}
+                  onChange={e => setCustomField(i, 'value', e.target.value)}
+                  placeholder="Value"
+                />
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...state, customFields: state.customFields.filter((_, j) => j !== i) })}
+                  style={removeBtn}
+                >×</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange({ ...state, customFields: [...state.customFields, { key: '', value: '' }] })}
+              style={addBtn}
+            >+ Add property</button>
           </div>
         </div>
       )}
@@ -152,4 +187,14 @@ const inp: React.CSSProperties = {
   background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
   color: 'var(--text)', fontSize: 13, padding: '7px 10px', width: '100%',
   outline: 'none', boxSizing: 'border-box',
+}
+
+const removeBtn: React.CSSProperties = {
+  background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+  color: 'var(--subtle)', cursor: 'pointer', padding: '0 8px', fontSize: 14,
+}
+
+const addBtn: React.CSSProperties = {
+  background: 'transparent', border: '1px dashed var(--border)', borderRadius: 6,
+  color: 'var(--faint)', cursor: 'pointer', fontSize: 12, padding: '4px 10px', marginTop: 2,
 }

@@ -251,13 +251,17 @@ edges:
             <p style={{ ...styles.p, marginTop: 8 }}>
               The metadata file itself supports these fields (all optional):
             </p>
-            <Pre>{`title: Ledger API                    # overrides node name in the overlay header
-owner: Finance Platform Team
-status: active                       # active | stable | deprecated | planned | in-progress | beta
+            <Pre>{`title: Ledger API        # overrides node name in the overlay header
 description: |
   REST + gRPC interface for posting journal entries.
   All mutations are append-only to the partitioned ledger table.
-sla: 99.9%                           # any extra key: value pairs are displayed
+
+# Any extra key: value pairs are shown as properties
+owner: Finance Platform Team
+status: active
+sla: 99.9%
+technology: gRPC / REST
+
 links:
   - label: OpenAPI Spec
     url: https://docs.example.com/ledger-api

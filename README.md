@@ -350,16 +350,20 @@ edges:
 
 ### Metadata file format
 
-All fields are optional. Any extra key–value pairs are displayed as-is.
+All fields are optional.
 
 ```yaml
-title: Ledger API                      # overrides node name in the overlay header
-owner: Finance Platform Team
-status: active                         # active | stable | deprecated | planned | in-progress | beta
+title: Ledger API        # overrides node name in the overlay header
 description: |
   Multi-line description shown in the overlay.
   Supports plain-text paragraphs.
-sla: 99.9% uptime                      # arbitrary extra fields
+
+# Any key: value pairs are shown in a Properties table
+owner: Finance Platform Team
+status: active
+sla: 99.9% uptime
+technology: gRPC / REST
+
 links:
   - label: OpenAPI Spec
     url: https://docs.example.com/ledger-api/openapi
@@ -367,7 +371,7 @@ links:
     url: https://wiki.example.com/runbooks/ledger-api
 ```
 
-The `status` field renders as a colour-coded badge: green for `active`/`stable`, amber for `planned`/`in-progress`/`beta`, red for `deprecated`.
+The overlay shows `title` in the header, `description` as body text, any key–value pairs in a **Properties** table, and `links` as clickable buttons.
 
 ---
 

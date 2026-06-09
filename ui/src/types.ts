@@ -54,8 +54,6 @@ export interface YamlEdge {
 export interface MetaFile {
   title?: string
   description?: string
-  owner?: string
-  status?: string
   links?: { label: string; url: string }[]
   [key: string]: unknown
 }
